@@ -17,7 +17,7 @@ public class ConnectionManager {
       this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
       this.out = new PrintWriter(socket.getOutputStream());
       this.isActive = true;
-      print("Sucesso\n");
+      print("Sucess\n");
     }
     catch (IOException e) {
       this.isActive = false;
@@ -36,6 +36,20 @@ public class ConnectionManager {
       message = "An error has occured";
     }
     return message;
+  }
+
+  public void sendMessage(String message) throws IOException { // Adiciona a declaração throws
+    if (isActive && out != null) {
+        out.println(message);
+        out.flush();
+        // Verifica erros após o flush
+        if (out.checkError()) {
+            throw new IOException("Error sending message: PrintWriter encountered an error.");
+        }
+    } else {
+        // Lança uma exceção em vez de imprimir para System.err
+        thrownew IOException("Connection is not active or output stream is null.");
+    }
   }
   
 }
