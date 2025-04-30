@@ -1,4 +1,4 @@
-Public Class Button{
+public class Button{
     private PImage current_image;
     private PImage default_image;
     private PImage hover_image;
@@ -7,7 +7,7 @@ Public Class Button{
     private float width;
     private float height;
 
-    Public Button(String default_path, String hover_path, float x, float y){
+    public Button(String default_path, String hover_path, float x, float y){
         this.default_image = loadImage(default_path);
         this.hover_image = loadImage(hover_path);
         this.current_image = this.default_image;
@@ -17,20 +17,26 @@ Public Class Button{
         this.height = this.current_image.height;
     }
 
-    Public void draw(){
+    public void draw(){
         image(this.current_image, this.x, this.y);
     }
 
-    Public void updatePosition(float x, float y){
+    public void updatePosition(float x, float y){
         this.x = x;
         this.y = y;
     }
 
-    Public void changeToHover(){
+    public void changeToHover(){
         this.current_image = this.hover_image;
     }
-    Public void changeToDefault(){
+    public void changeToDefault(){
         this.current_image = this.default_image;
     }
 
+    public boolean isMouseOver(){
+        return (mouseX > this.x && mouseX < this.x + this.width && mouseY > this.y && mouseY < this.y + this.height);
+    }
+    public boolean isMousePressed(){
+        return (mouseButton == LEFT);
+    }
 }
