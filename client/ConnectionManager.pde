@@ -1,10 +1,13 @@
-import processing.net.*;
-import java.net.*;
-
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.Socket;
+import java.util.*;
 
 public class ConnectionManager {
 
-  private socket socket;
+  private Socket socket;
   private BufferedReader in;
   private PrintWriter out;
   public boolean isActive;
@@ -48,7 +51,7 @@ public class ConnectionManager {
         }
     } else {
         // Lança uma exceção em vez de imprimir para System.err
-        thrownew IOException("Connection is not active or output stream is null.");
+        throw new IOException("Connection is not active or output stream is null.");
     }
   }
   
