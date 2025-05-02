@@ -2,10 +2,10 @@ public class Button{
     private PImage current_image;
     private PImage default_image;
     private PImage hover_image;
-    private float x;
-    private float y;
-    private float width;
-    private float height;
+    float x;
+    float y;
+    float width;
+    float height;
 
     public Button(String default_path, String hover_path, float x, float y){
         this.default_image = loadImage(default_path);
@@ -33,10 +33,8 @@ public class Button{
         this.current_image = this.default_image;
     }
 
+    // Check if the mouse is over the button
     public boolean isMouseOver(){
         return (mouseX > this.x && mouseX < this.x + this.width && mouseY > this.y && mouseY < this.y + this.height);
-    }
-    public boolean isMousePressed(){
-        return (mouseButton == LEFT);
     }
 }
