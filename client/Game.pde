@@ -11,12 +11,17 @@ private enum State{
 
 private State currentState;
 
+private ConnectionManager cm;
+
+private Player player = new Player(0, 0, 255); // Player is blue
+private Player opponent = new Player(255, 0, 0); // Opponent is red
+
 private Button loginButton;
 private Button registerButton;
-private Button exitButton;
-private Button playButton;
-private Button backButton;
 private Button continueButton;
+private Button backButton;
+private Button playButton;
+private Button playAgainButton;
 
 private InputBox usernameBox;
 private InputBox passwordBox;
@@ -25,6 +30,11 @@ void setup() {
     size(1000, 600);
     background(1);
     currentState = State.MENU;
+    try {
+        cm = new ConnectionManager("localhost", 1234); // Connect to the server
+    } catch (Exception e) {
+        println("Connection failed: " + e.getMessage());
+    }
 
     // Initialize buttons
     registerButton = new Button("Images/register_default.png", "Images/register_hover.png", 0, 0);
@@ -41,7 +51,9 @@ void setup() {
     
     playButton = new Button("Images/play_default.png", "Images/play_hover.png", 0, 0);
     playButton.updatePosition(width/2 - playButton.width/2, height/2 + playButton.height/2);    
-    //exitButton = new Button("assets/exit.png", "assets/exit_hover.png", 100, 300);
+
+    playAgainButton = new Button("Images/play_again_default.png", "Images/play_again_hover.png", 0, 0);
+    playAgainButton.updatePosition(width/2 - playAgainButton.width/2, height/2 + playAgainButton.height*2);
 
     // Initialize input boxes
     usernameBox = new InputBox("Images/username_box.png", 0, 0);
@@ -77,12 +89,19 @@ void draw() {
             break;
         case LOBBY:
             // TO DO: Lobby screen
+            text("Lobby screen", 300, 300);
+            String response = this.cm.receiveMessage();
+            if(response.equals("match found")){
+                currentState = State.PLAYING;
+            }
             break;
         case PLAYING:
             // TO DO: Playing screen
             break;
         case MATCH_OVER:
-            // TO DO: Match over screen
+            //escrever o resultado do jogo
+            playAgainButton.draw();
+            backButton.draw();
             break;
     }
 }
@@ -129,6 +148,18 @@ void mouseMoved() {
             backButton.changeToDefault();
         }
     }
+    if(currentState == State.MATCH_OVER) {
+        if (playAgainButton.isMouseOver()) {
+            playAgainButton.changeToHover();
+        } else {
+            playAgainButton.changeToDefault();
+        }
+        if (backButton.isMouseOver()) {
+            backButton.changeToHover();
+        } else {
+            backButton.changeToDefault();
+        }
+    }
 }
 
 void mousePressed() {
@@ -164,30 +195,50 @@ void mousePressed() {
         } else if(currentState == State.LOGIN && continueButton.isMouseOver() && mouseButton == LEFT) {
             //TO DO: Verificar se o user e a pass estão corretos
             println("Username: " + usernameBox.getText() + ", Password: " + passwordBox.getText());
-            usernameBox.clearText();
-            passwordBox.clearText();
-            currentState = State.LOGGED;
-            continueButton.changeToDefault();
+            // if correto:
+                player.setName(usernameBox.getText());
+                usernameBox.clearText();
+                passwordBox.clearText();
+                currentState = State.LOGGED;
+                continueButton.changeToDefault();
 
         } else if(currentState == State.REGISTER && continueButton.isMouseOver() && mouseButton == LEFT) {
             //TO DO: Verificar se o username ainda não existe, se não guardar o nome e a pass
             println("Username: " + usernameBox.getText() + ", Password: " + passwordBox.getText());
-            usernameBox.clearText();
-            passwordBox.clearText();
-            currentState = State.LOGGED;
-            continueButton.changeToDefault();
+            // if valido:
+                player.setName(usernameBox.getText());
+                usernameBox.clearText();
+                passwordBox.clearText();
+                currentState = State.LOGGED;
+                continueButton.changeToDefault();
 
         }
     }
     else if(currentState == State.LOGGED) {
         if (playButton.isMouseOver() && mouseButton == LEFT) {
-            //TO DO: Entrar no jogo
-            println("Entrar no jogo");
-            playButton.changeToDefault();
-            currentState = State.LOBBY;
+            this.cm.joinMatch(player.getName());
+            String response = this.cm.receiveMessage();
+            if(response.equals("joined a lobby")){
+                playButton.changeToDefault();
+                currentState = State.LOBBY;
+            }
 
         } else if (backButton.isMouseOver() && mouseButton == LEFT) {
             currentState = State.MENU;
+            
+        }
+    }
+    else if(currentState == State.MATCH_OVER) {
+        if (playAgainButton.isMouseOver() && mouseButton == LEFT) {
+            this.cm.joinMatch(player.getName());
+            String response = this.cm.receiveMessage();
+            if(response.equals("joined a lobby")){
+                playAgainButton.changeToDefault();
+                currentState = State.LOBBY;
+            }
+
+        } else if (backButton.isMouseOver() && mouseButton == LEFT) {
+            currentState = State.LOGGED;
             
         }
     }
@@ -198,10 +249,10 @@ void keyPressed() {
     if (currentState == State.REGISTER || currentState == State.LOGIN) {
         if (usernameBox.isSelected()) {
             usernameBox.receiveKey(key);
-            usernameBox.draw(); // Redraw the input box to show the updated text
+            usernameBox.draw(); // Redraw the input box to show the username
         } else if (passwordBox.isSelected()) {
             passwordBox.receiveKey(key);
-            passwordBox.draw(); // Redraw the input box to show the updated text
+            passwordBox.draw(); // Redraw the input box to show the password
         }
     }
 }

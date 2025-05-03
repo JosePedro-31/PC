@@ -20,6 +20,13 @@ public class Player{
         this.points = points;
     }
 
+    public void setName(String name) {
+        this.name = name;
+    }
+    public String getName() {
+        return this.name;
+    }
+
     public void renderPlayer(){
         pushMatrix();
         translate(this.position.x, this.position.y);
