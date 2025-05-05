@@ -14,7 +14,7 @@ public class ConnectionManager {
   StringBuilder sb = new StringBuilder();
 
 
-  public ConnectionManager(String host, int port) {
+  public void main(String host, int port) {
     try {
       this.socket = new Socket(host, port);
       this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -41,18 +41,33 @@ public class ConnectionManager {
     return message;
   }
 
-  public void sendMessage(String message) throws IOException { // Adiciona a declaração throws
-    if (isActive && out != null) {
-        out.println(message);
-        out.flush();
-        // Verifica erros após o flush
-        if (out.checkError()) {
-            throw new IOException("Error sending message: PrintWriter encountered an error.");
-        }
-    } else {
-        // Lança uma exceção em vez de imprimir para System.err
-        throw new IOException("Connection is not active or output stream is null.");
+  public boolean createUser(String username, String password) {
+    this.out.println("create_user," + username + "," + password);
+    this.out.flush();
+    return true;
+  }
+
+  public boolean loginUser(String username, String password) {
+    this.out.println("login_user," + username + "," + password);
+    this.out.flush();
+    return true;
+  }
+
+  public void joinMatch(String username) {
+    this.out.println("join_match," + username);
+    this.out.flush();
+  }
+
+  public void sendKeyPress(char key) {
+    if(key == 'w' || key == 'a' || key == 's' || key == 'd') {
+      this.out.println("key_press," + key);
+      this.out.flush();
     }
+  }
+
+  public void sendKeyRelease(char key) {
+    this.out.println("key_release," + key);
+    this.out.flush();
   }
   
 }
