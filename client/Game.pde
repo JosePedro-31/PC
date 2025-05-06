@@ -30,12 +30,13 @@ void setup() {
     size(1000, 600);
     background(1);
     currentState = State.MENU;
+    /*
     try {
         cm = new ConnectionManager("localhost", 1234); // Connect to the server
     } catch (Exception e) {
         println("Connection failed: " + e.getMessage());
     }
-
+    */
     // Initialize buttons
     registerButton = new Button("Images/register_default.png", "Images/register_hover.png", 0, 0);
     registerButton.updatePosition(width/2 - registerButton.width/2, height/2 - registerButton.height/2);
@@ -254,5 +255,11 @@ void keyPressed() {
             passwordBox.receiveKey(key);
             passwordBox.draw(); // Redraw the input box to show the password
         }
+    }
+}
+
+void keyReleased() {
+    if (key == 'w' || key == 'a' || key == 's' || key == 'd') {
+        this.cm.sendKeyRelease(key);
     }
 }
