@@ -1,4 +1,4 @@
--module(file_functions).
+-module(user_functions).
 
 -export([accounts_manager/1]).
 

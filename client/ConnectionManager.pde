@@ -14,7 +14,7 @@ public class ConnectionManager {
   StringBuilder sb = new StringBuilder();
 
 
-  public void ConnectionManager(String host, int port) {
+  public ConnectionManager(String host, int port) {
     try {
       this.socket = new Socket(host, port);
       this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));

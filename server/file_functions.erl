@@ -11,8 +11,9 @@ read_content(Filename) ->
         {ok, Content} ->
             % eliminar os \r e \n do conteudo lido e criar uma lista com as linhas
             Data = re:split(Content, "\r"), % Separa o conteudo pelos \r e cria uma lista com os elementos
-            Data1 = lists:flatten(Data), % junta todos os elementos da lista em uma só
-            Data2 = re:split(Data1, "\n"), % Separa o conteudo pelos \n e cria uma lista com os elementos
+            %Data1 = lists:flatten(Data), % junta todos os elementos da lista em uma só
+            %io:fwrite("Data1: ~p~n", [Data1]), %debug
+            Data2 = re:split(Data, "\n"), % Separa o conteudo pelos \n e cria uma lista com os elementos
             case Data2 of
                 [<<>>] -> % Caso ficheiro lido esteja vazio cria map vazio
                     #{};
@@ -35,7 +36,7 @@ parser([H | T], Data) ->
             Username = binary_to_list(U),
             Password = binary_to_list(P),
             Level = binary_to_list(N),
-            %io:fwrite("Username: ~p, Password: ~p, Level: ~p~n", [Username, Password, Level]),
+            io:fwrite("Username: ~p, Password: ~p, Level: ~p~n", [Username, Password, Level]),
             if 
                 Username == [<<>>] ->
                     Data1 = Data;
