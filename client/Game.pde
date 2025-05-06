@@ -30,13 +30,13 @@ void setup() {
     size(1000, 600);
     background(1);
     currentState = State.MENU;
-    /*
+    
     try {
-        cm = new ConnectionManager("localhost", 1234); // Connect to the server
+        cm = new ConnectionManager("192.168.1.162", 1111); // Connect to the server
     } catch (Exception e) {
         println("Connection failed: " + e.getMessage());
     }
-    */
+    
     // Initialize buttons
     registerButton = new Button("Images/register_default.png", "Images/register_hover.png", 0, 0);
     registerButton.updatePosition(width/2 - registerButton.width/2, height/2 - registerButton.height/2);
@@ -196,12 +196,21 @@ void mousePressed() {
         } else if(currentState == State.LOGIN && continueButton.isMouseOver() && mouseButton == LEFT) {
             //TO DO: Verificar se o user e a pass estão corretos
             println("Username: " + usernameBox.getText() + ", Password: " + passwordBox.getText());
-            // if correto:
+            
+            cm.loginUser(usernameBox.getText(), passwordBox.getText());
+            String response = this.cm.receiveMessage();
+            println("Response: " + response);
+
+            if (response.equals("Login successful")){
                 player.setName(usernameBox.getText());
-                usernameBox.clearText();
-                passwordBox.clearText();
                 currentState = State.LOGGED;
                 continueButton.changeToDefault();
+            }
+            
+            usernameBox.clearText();
+            passwordBox.clearText();
+            usernameBox.deselect();
+            passwordBox.deselect();
 
         } else if(currentState == State.REGISTER && continueButton.isMouseOver() && mouseButton == LEFT) {
             //TO DO: Verificar se o username ainda não existe, se não guardar o nome e a pass
@@ -259,7 +268,7 @@ void keyPressed() {
 }
 
 void keyReleased() {
-    if (key == 'w' || key == 'a' || key == 's' || key == 'd') {
+    if (currentState == State.PLAYING) {
         this.cm.sendKeyRelease(key);
     }
 }
