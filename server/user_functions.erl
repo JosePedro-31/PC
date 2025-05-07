@@ -15,7 +15,6 @@ accounts_manager(Accounts) ->
         {getLevel, Username, From} ->
             case maps:find(Username, Accounts) of
                 {ok, {_, Level}} ->
-                    io:fwrite("Level: ~p~n", [Level]), %debug
                     From ! Level;
                 _ ->
                     From ! invalid_user

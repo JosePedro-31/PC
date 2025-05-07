@@ -16,6 +16,8 @@ private ConnectionManager cm;
 private Player player = new Player(0, 0, 255); // Player is blue
 private Player opponent = new Player(255, 0, 0); // Opponent is red
 
+private boolean matchThreadStarted = false;
+
 private Button loginButton;
 private Button registerButton;
 private Button continueButton;
@@ -92,13 +94,29 @@ void draw() {
             // TO DO: Lobby screen
             fill(255);
             text("Lobby screen", 300, 300);
-            /*String response = this.cm.receiveMessage();
-            if(response.equals("match found")){
+            String response = this.cm.receiveMessage();
+            if(response.equals("Match started")){
                 currentState = State.PLAYING;
-            }*/
+            }
             break;
-        case PLAYING:
-            // TO DO: Playing screen
+        case PLAYING:            
+            player.renderPlayer();
+            opponent.renderPlayer();
+
+            if (matchThreadStarted == false){
+                matchThreadStarted = true;
+                new Thread( () -> {
+                    try{
+                        String message = this.cm.receiveMessage();
+                        while (message != "Match Over"){
+                            parser(message);
+                            message = this.cm.receiveMessage();
+                        }
+                    } catch (Exception e){
+                        println("Error: " + e.getMessage());
+                    }
+                }).start();
+            }
             break;
         case MATCH_OVER:
             //escrever o resultado do jogo
@@ -266,6 +284,29 @@ void mousePressed() {
     
 }
 
+void parser(String message){
+    String[] parts = message.split(",");
+    if (parts[0].equals("Players")){ // "Players,username1,x1,y1,points1,username2,x2,y2,points2"
+        String name1 = parts[1];
+        float x1 = Float.parseFloat(parts[2]);
+        float y1 = Float.parseFloat(parts[3]);
+        float points1 = Float.parseFloat(parts[4]);
+        String name2 = parts[5];
+        float x2 = Float.parseFloat(parts[6]);
+        float y2 = Float.parseFloat(parts[7]);
+        float points2 = Float.parseFloat(parts[8]);
+
+        if (name1.equals(player.getName())){
+            player.updatePlayer(name1, x1, y1, points1);
+            opponent.updatePlayer(name2, x2, y2, points2);
+        } else {
+            opponent.updatePlayer(name1, x1, y1, points1);
+            player.updatePlayer(name2, x2, y2, points2);
+        }
+    }
+}
+
+
 void keyPressed() {
     if (currentState == State.REGISTER || currentState == State.LOGIN) {
         if (usernameBox.isSelected()) {
@@ -275,6 +316,8 @@ void keyPressed() {
             passwordBox.receiveKey(key);
             passwordBox.draw(); // Redraw the input box to show the password
         }
+    } else if (currentState == State.PLAYING) {
+        this.cm.sendKeyPress(key);
     }
 }
 

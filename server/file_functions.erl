@@ -36,7 +36,6 @@ read_content(Filename) ->
             Data = binary_to_list(Content), % Converte o conteudo lido para uma lista
             Data1 = string:tokens(Data, "\r"), % Separa o conteudo pelos \r e cria uma lista com os elementos
             Data2 = lists:flatten(Data1), % junta todos os elementos da lista em uma só
-            io:fwrite("Data1: ~p~n", [Data1]), %debug
             Data3 = string:tokens(Data2, "\n"), % Separa o conteudo pelos \n e cria uma lista com os elementos
             case Data3 of
                 [] -> % Caso ficheiro lido esteja vazio cria map vazio
@@ -56,6 +55,5 @@ parser([], Data) -> Data;
 parser([H | T], Data) ->
     
     [Username, Password, Level] = string:tokens(H, ","),
-    io:fwrite("Username: ~p, Password: ~p, Level: ~p~n", [Username, Password, Level]),
     Data1 = maps:put(Username, {Password, Level}, Data),
     parser(T, Data1).
