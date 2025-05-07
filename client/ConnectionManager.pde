@@ -41,8 +41,8 @@ public class ConnectionManager {
     return message;
   }
 
-  public boolean createUser(String username, String password) {
-    this.out.println("create_user," + username + "," + password);
+  public boolean registerUser(String username, String password) {
+    this.out.println("register_user," + username + "," + password);
     this.out.flush();
     return true;
   }
@@ -53,8 +53,8 @@ public class ConnectionManager {
     return true;
   }
 
-  public void joinMatch(String username) {
-    this.out.println("join_match," + username);
+  public void joinLobby(String username) {
+    this.out.println("join_lobby," + username);
     this.out.flush();
   }
 

@@ -15,8 +15,7 @@ server(Port) ->
     Result = gen_tcp:listen(Port, [binary, {packet, line}]),
     case Result of
         {ok, LSock} ->
-            %register(match_manager, spawn(fun() -> lobby([]) end)),
-
+            register(lobbyProcess, spawn(fun() -> lobby([]) end)),
             Filename = "teste",
             Accounts = file_functions:read_content(Filename),
             io:fwrite("Accounts: ~p~n", [Accounts]), %debug
@@ -44,9 +43,7 @@ acceptor(LSock) ->
 comunicator(Socket) ->
     receive
         {tcp, _, Message} ->
-            io:fwrite("Message received: ~p~n", [Message]), %debug
             Message1 = binary_to_list(Message),
-            io:fwrite("Message1: ~p~n", [Message1]), %debug
             Message2 = string:trim(Message1), %remove os espaços em branco incluindo os \r e \n
             Message3 = string:tokens(Message2, ","), %separa a mensagem em tokens
         case Message3 of
@@ -63,6 +60,81 @@ comunicator(Socket) ->
                         io:fwrite("Invalid password~n"),
                         gen_tcp:send(Socket, "Invalid password\n")
                 end,
+                comunicator(Socket); %continua a receber mensagens
+            ["register_user", Username, Password] ->
+                accountsProcess ! {register, Username, Password, self()},
+                receive
+                    registration_successful ->
+                        io:fwrite("Registration successful~n"),
+                        gen_tcp:send(Socket, "Registration successful\n");
+                    user_already_exists ->
+                        io:fwrite("User already exists~n"),
+                        gen_tcp:send(Socket, "User already exists\n")
+                end,
+                comunicator(Socket); %continua a receber mensagens~
+            ["join_lobby", Username] -> 
+                accountsProcess ! {getLevel, Username, self()},
+                receive
+                    Level ->
+                        lobbyProcess ! {join, Username, Level, self()},
+                        receive
+                            success ->
+                                io:fwrite("Join lobby successful~n"),
+                                gen_tcp:send(Socket, "Join lobby successful\n")
+                        end
+                end,
                 comunicator(Socket) %continua a receber mensagens
         end 
     end.
+
+
+lobby(Pids) ->
+    io:fwrite("Lobby: ~p~n", [Pids]), %debug
+    receive
+        {join, Username, User_level, From} ->
+            case Pids of
+                [] ->
+                    From ! success,
+                    lobby([{Username, User_level, From}]);
+                _ ->
+                    Pids2 = [{Username, User_level, From} | Pids],
+                    From ! success,
+                    case matchMaking(Pids2) of
+                        {matchFound, User1, User2} ->
+                            io:fwrite("Match found: ~p and ~p~n", [User1, User2]),
+                            {Username1, _, Pid1} = User1,
+                            {Username2, _, Pid2} = User2,
+                            Pids3 = lists:delete(User1, Pids2),
+                            Pids4 = lists:delete(User2, Pids3),
+                            lobby(Pids4);
+                        noMatch ->
+                            io:fwrite("No match found~n"),
+                            lobby(Pids2)
+                    end
+            end
+    end.
+
+
+matchMaking([]) -> noMatch;
+matchMaking ([H | T]) ->
+    Result = same_level(H, T),
+    case Result of
+        {matchFound, User1, User2} ->
+            {matchFound, User1, User2};
+        noMatch ->
+            noMatch
+    end.
+
+same_level(_, []) -> noMatch;
+same_level(User1, [User2 | T]) ->
+    {_, Level1, _} = User1,
+    case User2 of
+        {_, Level2, _} ->
+            if
+                Level1 == Level2 ->
+                    {matchFound, User1, User2};
+                true ->
+                    same_level(User1, T)
+            end
+    end.
+
