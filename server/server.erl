@@ -2,6 +2,7 @@
 
 -import(file_functions, [read_content/1]).
 -import(user_functions, [accounts_manager/1]).
+-import(game, [init/2]).
 
 -export ([start/1, server/1, stop/1]).
 
@@ -18,7 +19,6 @@ server(Port) ->
             register(lobbyProcess, spawn(fun() -> lobby([]) end)),
             Filename = "teste",
             Accounts = file_functions:read_content(Filename),
-            io:fwrite("Accounts: ~p~n", [Accounts]), %debug
             register(accountsProcess ,spawn(fun() -> accounts_manager(Accounts) end)),
 
             %register(file_process, spawn(fun() -> file_management() end)),
@@ -46,45 +46,52 @@ comunicator(Socket) ->
             Message1 = binary_to_list(Message),
             Message2 = string:trim(Message1), %remove os espaços em branco incluindo os \r e \n
             Message3 = string:tokens(Message2, ","), %separa a mensagem em tokens
-        case Message3 of
-            ["login_user", Username, Password] ->
-                accountsProcess ! {login, Username, Password, self()},
-                receive
-                    success ->
-                        io:fwrite("Login successful~n"),
-                        gen_tcp:send(Socket, "Login successful\n");
-                    invalid_user ->
-                        io:fwrite("Invalid user~n"),
-                        gen_tcp:send(Socket, "Invalid user\n");
-                    invalid_password ->
-                        io:fwrite("Invalid password~n"),
-                        gen_tcp:send(Socket, "Invalid password\n")
-                end,
-                comunicator(Socket); %continua a receber mensagens
-            ["register_user", Username, Password] ->
-                accountsProcess ! {register, Username, Password, self()},
-                receive
-                    registration_successful ->
-                        io:fwrite("Registration successful~n"),
-                        gen_tcp:send(Socket, "Registration successful\n");
-                    user_already_exists ->
-                        io:fwrite("User already exists~n"),
-                        gen_tcp:send(Socket, "User already exists\n")
-                end,
-                comunicator(Socket); %continua a receber mensagens~
-            ["join_lobby", Username] -> 
-                accountsProcess ! {getLevel, Username, self()},
-                receive
-                    Level ->
-                        lobbyProcess ! {join, Username, Level, self()},
-                        receive
-                            success ->
-                                io:fwrite("Join lobby successful~n"),
-                                gen_tcp:send(Socket, "Join lobby successful\n")
-                        end
-                end,
-                comunicator(Socket) %continua a receber mensagens
-        end 
+            case Message3 of
+                ["login_user", Username, Password] ->
+                    accountsProcess ! {login, Username, Password, self()},
+                    receive
+                        success ->
+                            io:fwrite("Login successful~n"),
+                            gen_tcp:send(Socket, "Login successful\n");
+                        invalid_user ->
+                            io:fwrite("Invalid user~n"),
+                            gen_tcp:send(Socket, "Invalid user\n");
+                        invalid_password ->
+                            io:fwrite("Invalid password~n"),
+                            gen_tcp:send(Socket, "Invalid password\n")
+                    end,
+                    comunicator(Socket); %continua a receber mensagens
+                ["register_user", Username, Password] ->
+                    accountsProcess ! {register, Username, Password, self()},
+                    receive
+                        registration_successful ->
+                            io:fwrite("Registration successful~n"),
+                            gen_tcp:send(Socket, "Registration successful\n");
+                        user_already_exists ->
+                            io:fwrite("User already exists~n"),
+                            gen_tcp:send(Socket, "User already exists\n")
+                    end,
+                    comunicator(Socket); %continua a receber mensagens~
+                ["join_lobby", Username] -> 
+                    accountsProcess ! {getLevel, Username, self()},
+                    receive
+                        Level ->
+                            lobbyProcess ! {join, Username, Level, self()},
+                            receive
+                                success ->
+                                    io:fwrite("Join lobby successful~n"),
+                                    gen_tcp:send(Socket, "Join lobby successful\n")
+                            end
+                    end,
+                    comunicator(Socket) %continua a receber mensagens
+            end;
+        {matchStarted, Match_pid} ->
+            io:fwrite("Match started~n"),
+            gen_tcp:send(Socket, "Match started\n"),
+            match_comunicator(Socket, Match_pid);
+        _ ->
+            io:fwrite("Unknown message received~n"),
+            comunicator(Socket)
     end.
 
 
@@ -104,6 +111,7 @@ lobby(Pids) ->
                             io:fwrite("Match found: ~p and ~p~n", [User1, User2]),
                             {Username1, _, Pid1} = User1,
                             {Username2, _, Pid2} = User2,
+                            spawn(fun() -> game:init({Pid1, Username1}, {Pid2, Username2}) end),
                             Pids3 = lists:delete(User1, Pids2),
                             Pids4 = lists:delete(User2, Pids3),
                             lobby(Pids4);
@@ -138,3 +146,27 @@ same_level(User1, [User2 | T]) ->
             end
     end.
 
+
+match_comunicator(Socket, Match_pid) ->
+    receive
+        {tcp, _, Message} ->
+            Message1 = binary_to_list(Message),
+            Message2 = string:trim(Message1), %remove os espaços em branco incluindo os \r e \n
+            Message3 = string:tokens(Message2, ","), %separa a mensagem em tokens
+            case Message3 of
+                ["key_press,", Key] ->
+                    io:fwrite("Key pressed: ~p~n", [Key]);
+
+                ["key_release,", Key] ->
+                    io:fwrite("Key released: ~p~n", [Key])
+
+            end,
+            match_comunicator(Socket, Match_pid);
+        {matchOver} ->
+            io:fwrite("Match over~n"),
+            gen_tcp:send(Socket, "Match over\n"),
+            comunicator(Socket);
+        _ ->
+            io:fwrite("Unknown message received~n"),
+            match_comunicator(Socket, Match_pid)
+    end.
