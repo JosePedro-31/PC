@@ -90,11 +90,12 @@ void draw() {
             break;
         case LOBBY:
             // TO DO: Lobby screen
+            fill(255);
             text("Lobby screen", 300, 300);
-            String response = this.cm.receiveMessage();
+            /*String response = this.cm.receiveMessage();
             if(response.equals("match found")){
                 currentState = State.PLAYING;
-            }
+            }*/
             break;
         case PLAYING:
             // TO DO: Playing screen
@@ -215,22 +216,31 @@ void mousePressed() {
         } else if(currentState == State.REGISTER && continueButton.isMouseOver() && mouseButton == LEFT) {
             //TO DO: Verificar se o username ainda não existe, se não guardar o nome e a pass
             println("Username: " + usernameBox.getText() + ", Password: " + passwordBox.getText());
-            // if valido:
+            
+            cm.registerUser(usernameBox.getText(), passwordBox.getText());
+            String response = this.cm.receiveMessage();
+            println("Response: " + response);
+
+            if (response.equals("Registration successful")){
                 player.setName(usernameBox.getText());
-                usernameBox.clearText();
-                passwordBox.clearText();
                 currentState = State.LOGGED;
                 continueButton.changeToDefault();
-
+            }
+            
+            usernameBox.clearText();
+            passwordBox.clearText();
+            usernameBox.deselect();
+            passwordBox.deselect();
         }
     }
     else if(currentState == State.LOGGED) {
         if (playButton.isMouseOver() && mouseButton == LEFT) {
-            this.cm.joinMatch(player.getName());
+            
+            this.cm.joinLobby(player.getName());
             String response = this.cm.receiveMessage();
-            if(response.equals("joined a lobby")){
-                playButton.changeToDefault();
+            if(response.equals("Join lobby successful")){
                 currentState = State.LOBBY;
+                playButton.changeToDefault();
             }
 
         } else if (backButton.isMouseOver() && mouseButton == LEFT) {
@@ -240,9 +250,10 @@ void mousePressed() {
     }
     else if(currentState == State.MATCH_OVER) {
         if (playAgainButton.isMouseOver() && mouseButton == LEFT) {
-            this.cm.joinMatch(player.getName());
+            
+            this.cm.joinLobby(player.getName());
             String response = this.cm.receiveMessage();
-            if(response.equals("joined a lobby")){
+            if(response.equals("Join lobby successful")){
                 playAgainButton.changeToDefault();
                 currentState = State.LOBBY;
             }
