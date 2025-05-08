@@ -156,11 +156,11 @@ match_comunicator(Socket, Match_pid) ->
             case Message3 of
                 ["key_press", Key] ->
                     io:fwrite("Key pressed: ~p~n", [Key]),
-                    Match_pid ! {key_press, Key, self()};
+                    Match_pid ! {keyPress, Key, self()};
 
                 ["key_release", Key] ->
                     io:fwrite("Key released: ~p~n", [Key]),
-                    Match_pid ! {key_release, Key, self()}
+                    Match_pid ! {keyRelease, Key, self()}
 
             end,
             match_comunicator(Socket, Match_pid);
@@ -192,6 +192,6 @@ extract_player_data(Match_data) ->
     Y2 = integer_to_list(maps:get(y, P2)),
     Points2 = integer_to_list(maps:get(points, P2)),
     Data = lists:flatten(["Players,", Username1, ",", X1, ",", Y1, ",", Points1, ",",
-                          Username2, ",", X2, ",", Y2, ",", Points2]),
+                          Username2, ",", X2, ",", Y2, ",", Points2, "\n"]),
     Data.
 
