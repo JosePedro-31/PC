@@ -9,8 +9,7 @@ init(Player1, Player2) ->
     Pid1 ! {matchStarted, self()}, % Envia mensagem para o jogador 1 a dizer que o jogo começou
     Pid2 ! {matchStarted, self()}, % Envia mensagem para o jogador 2 a dizer que o jogo começou
     Match_data = #{players => Players}, % preciso adicionar tempo, items a este mapa final
-    Keys_process = spawn(fun() -> key_updater() end),
-    server_comunicator(Match_data, Keys_process).
+    server_comunicator(Match_data).
 
 
 initialize_players({Pid1, Username1}, {Pid2, Username2}) ->
@@ -22,94 +21,75 @@ initialize_players({Pid1, Username1}, {Pid2, Username2}) ->
     Players.
 
 
-server_comunicator(Match_data, Keys_process) ->
+server_comunicator(Match_data) ->
        receive
-              {key_press, Key, PlayerPid} ->
-                     Keys_process ! {key_press, Match_data, Key, PlayerPid, self()},
-                     receive
-                            {updated, Players1} ->
-                                   io:fwrite("Key updated: ~p~n", [Key]), %debug
-                                   Match_data1 = maps:put(players, Players1, Match_data),
-                                   io:fwrite("Match_data1: ~p~n", [Match_data1]), %debug
-                                   Match_data2 = game_logic(Match_data1),
-                                   server_comunicator(Match_data2, Keys_process);
-                            _ ->
-                                   io:fwrite("Error updating key~n"), %debug
-                                   server_comunicator(Match_data, Keys_process)
-                     end;
-              {key_release, Key, PlayerPid} ->
-                     Keys_process ! {key_release, Match_data, Key, PlayerPid, self()},
-                     receive
-                            {updated, Players1} ->
-                                   io:fwrite("Key updated: ~p~n", [Key]), %debug
-                                   Match_data1 = maps:put(players, Players1, Match_data),
-                                   io:fwrite("Match_data1: ~p~n", [Match_data1]), %debug
-                                   Match_data2 = game_logic(Match_data1),
-                                   server_comunicator(Match_data2, Keys_process);
-                            _ ->
-                                   io:fwrite("Error updating key~n"), %debug
-                                   server_comunicator(Match_data, Keys_process)
-                     end
+              {keyPress, Key, PlayerPid} ->
+                     Match_data1 = key_updater(keyPress, Match_data, Key, PlayerPid),
+                     io:fwrite("Key updated: ~p~n", [Key]), %debug
+                     io:fwrite("Match_data1: ~p~n", [Match_data1]), %debug
+                     Match_data2 = game_logic(Match_data1),
+                     server_comunicator(Match_data2);
+
+              {keyRelease, Key, PlayerPid} ->
+                     Match_data1 = key_updater(keyRelease, Match_data, Key, PlayerPid),
+                     io:fwrite("Key released: ~p~n", [Key]), %debug
+                     io:fwrite("Match_data1: ~p~n", [Match_data1]), %debug
+                     Match_data2 = game_logic(Match_data1),
+                     server_comunicator(Match_data2)
+
+              after 
+                     33 ->
+                            Match_data1 = game_logic(Match_data),
+                            server_comunicator(Match_data1)
        end.
 
 
-key_updater() ->
-       receive
-              {key_press, Match_data, Key, PlayerPid, From} ->
-                     Players = maps:get(players, Match_data),
-                     Player = maps:get(PlayerPid, Players), 
-                     io:fwrite("Key pressed: ~p~n", [Key]), %debug
+key_updater(TypeOfPress, Match_data, Key, PlayerPid) ->
+
+       Players = maps:get(players, Match_data),
+       Player = maps:get(PlayerPid, Players), 
+       case TypeOfPress of
+              keyPress ->
                      case Key of
                             "w" ->
                                    Player1 = maps:put(w, true, Player),
                                    Players1 = maps:put(PlayerPid, Player1, Players),
-                                   io:fwrite("Players1: ~p~n", [Players1]), %debug
-                                   From ! {updated, Players1};       
+                                   io:fwrite("Players1: ~p~n", [Players1]); %debug
                             "s" ->
                                    Player1 = maps:put(s, true, Player),
                                    Players1 = maps:put(PlayerPid, Player1, Players),
-                                   io:fwrite("Players1: ~p~n", [Players1]), %debug
-                                   From ! {updated, Players1};
+                                   io:fwrite("Players1: ~p~n", [Players1]); %debug
                             "a" ->
                                    Player1 = maps:put(a, true, Player),
                                    Players1 = maps:put(PlayerPid, Player1, Players),
-                                   io:fwrite("Players1: ~p~n", [Players1]), %debug
-                                   From ! {updated, Players1};
+                                   io:fwrite("Players1: ~p~n", [Players1]); %debug
                             "d" ->
                                    Player1 = maps:put(d, true, Player),
                                    Players1 = maps:put(PlayerPid, Player1, Players),
-                                   io:fwrite("Players1: ~p~n", [Players1]), %debug
-                                   From ! {updated, Players1}
-                     end,
-                     key_updater();
-              {key_release, Match_data, Key, PlayerPid, From} ->
-                     Players = maps:get(players, Match_data),
-                     Player = maps:get(PlayerPid, Players), 
-                     io:fwrite("Key released: ~p~n", [Key]), %debug
+                                   io:fwrite("Players1: ~p~n", [Players1]) %debug
+                     end;
+              keyRelease ->
                      case Key of
                             "w" ->
                                    Player1 = maps:put(w, false, Player),
                                    Players1 = maps:put(PlayerPid, Player1, Players),
-                                   io:fwrite("Players1: ~p~n", [Players1]), %debug
-                                   From ! {updated, Players1};    
+                                   io:fwrite("Players1: ~p~n", [Players1]); %debug
                             "s" ->
                                    Player1 = maps:put(s, false, Player),
                                    Players1 = maps:put(PlayerPid, Player1, Players),
-                                   io:fwrite("Players1: ~p~n", [Players1]), %debug
-                                   From ! {updated, Players1};
+                                   io:fwrite("Players1: ~p~n", [Players1]); %debug
                             "a" ->
                                    Player1 = maps:put(a, false, Player),
                                    Players1 = maps:put(PlayerPid, Player1, Players),
-                                   io:fwrite("Players1: ~p~n", [Players1]), %debug
-                                   From ! {updated, Players1};
+                                   io:fwrite("Players1: ~p~n", [Players1]); %debug
                             "d" ->
                                    Player1 = maps:put(d, false, Player),
                                    Players1 = maps:put(PlayerPid, Player1, Players),
-                                   io:fwrite("Players1: ~p~n", [Players1]), %debug
-                                   From ! {updated, Players1}
-                     end,
-                     key_updater()
-       end.
+                                   io:fwrite("Players1: ~p~n", [Players1]) %debug
+                     end
+       end,
+       Match_data1 = maps:put(players, Players1, Match_data),
+       Match_data1.
 
 
 game_logic(Match_data) ->

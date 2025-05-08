@@ -28,6 +28,8 @@ private Button playAgainButton;
 private InputBox usernameBox;
 private InputBox passwordBox;
 
+private char previousKey = ' ';
+
 void setup() {
     size(1000, 600);
     background(1);
@@ -102,22 +104,11 @@ void draw() {
         case PLAYING:        
             player.renderPlayer();
             opponent.renderPlayer();
-            
-            // thread não está a funcionar, não está a receber mensagens
+    
             if (matchThreadStarted == false){
                 matchThreadStarted = true;
-                new Thread( () -> {
-                    try{
-                        String message = this.cm.receiveMessage();
-                        println("Message: no game state" + message);
-                        while (true){
-                            parser(message);
-                            message = this.cm.receiveMessage();
-                        }
-                    } catch (Exception e){
-                        println("Error: " + e.getMessage());
-                    }
-                }).start();
+                println("Starting parser thread...");
+                thread("parser");
             }
             break;
         case MATCH_OVER:
@@ -286,26 +277,33 @@ void mousePressed() {
     
 }
 
-void parser(String message){
-    String[] parts = message.split(",");
+void parser(){
+    // This function is called in a separate thread to parse messages from the server
+    println("Parser thread started...");
+    String message = this.cm.receiveMessage();
     println("Message: " + message);
-    if (parts[0].equals("Players")){ // "Players,username1,x1,y1,points1,username2,x2,y2,points2"
-        String name1 = parts[1];
-        float x1 = Float.parseFloat(parts[2]);
-        float y1 = Float.parseFloat(parts[3]);
-        float points1 = Float.parseFloat(parts[4]);
-        String name2 = parts[5];
-        float x2 = Float.parseFloat(parts[6]);
-        float y2 = Float.parseFloat(parts[7]);
-        float points2 = Float.parseFloat(parts[8]);
+    while (true) {
+        String[] parts = message.split(",");
+        if (parts[0].equals("Players")){ // "Players,username1,x1,y1,points1,username2,x2,y2,points2"
+            String name1 = parts[1];
+            float x1 = Float.parseFloat(parts[2]);
+            float y1 = Float.parseFloat(parts[3]);
+            float points1 = Float.parseFloat(parts[4]);
+            String name2 = parts[5];
+            float x2 = Float.parseFloat(parts[6]);
+            float y2 = Float.parseFloat(parts[7]);
+            float points2 = Float.parseFloat(parts[8]);
 
-        if (name1.equals(player.getName())){
-            player.updatePlayer(name1, x1, y1, points1);
-            opponent.updatePlayer(name2, x2, y2, points2);
-        } else {
-            opponent.updatePlayer(name1, x1, y1, points1);
-            player.updatePlayer(name2, x2, y2, points2);
+            if (name1.equals(player.getName())){
+                player.updatePlayer(name1, x1, y1, points1);
+                opponent.updatePlayer(name2, x2, y2, points2);
+            } else {
+                opponent.updatePlayer(name1, x1, y1, points1);
+                player.updatePlayer(name2, x2, y2, points2);
+            }
         }
+        message = this.cm.receiveMessage();
+        println("Message: " + message);
     }
 }
 
@@ -320,12 +318,16 @@ void keyPressed() {
             passwordBox.draw(); // Redraw the input box to show the password
         }
     } else if (currentState == State.PLAYING) {
-        this.cm.sendKeyPress(key);
+        if (key != previousKey) { // Ignore repeated key presses
+            this.cm.sendKeyPress(key); 
+            previousKey = key;
+        }
     }
 }
 
 void keyReleased() {
     if (currentState == State.PLAYING) {
         this.cm.sendKeyRelease(key);
+        previousKey = ' '; // Reset previous key when released
     }
 }
