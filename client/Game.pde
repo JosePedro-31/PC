@@ -99,16 +99,18 @@ void draw() {
                 currentState = State.PLAYING;
             }
             break;
-        case PLAYING:            
+        case PLAYING:        
             player.renderPlayer();
             opponent.renderPlayer();
-
+            
+            // thread não está a funcionar, não está a receber mensagens
             if (matchThreadStarted == false){
                 matchThreadStarted = true;
                 new Thread( () -> {
                     try{
                         String message = this.cm.receiveMessage();
-                        while (message != "Match Over"){
+                        println("Message: no game state" + message);
+                        while (true){
                             parser(message);
                             message = this.cm.receiveMessage();
                         }
@@ -286,6 +288,7 @@ void mousePressed() {
 
 void parser(String message){
     String[] parts = message.split(",");
+    println("Message: " + message);
     if (parts[0].equals("Players")){ // "Players,username1,x1,y1,points1,username2,x2,y2,points2"
         String name1 = parts[1];
         float x1 = Float.parseFloat(parts[2]);

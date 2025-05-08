@@ -154,14 +154,22 @@ match_comunicator(Socket, Match_pid) ->
             Message2 = string:trim(Message1), %remove os espaços em branco incluindo os \r e \n
             Message3 = string:tokens(Message2, ","), %separa a mensagem em tokens
             case Message3 of
-                ["key_press,", Key] ->
-                    io:fwrite("Key pressed: ~p~n", [Key]);
+                ["key_press", Key] ->
+                    io:fwrite("Key pressed: ~p~n", [Key]),
+                    Match_pid ! {key_press, Key, self()};
 
-                ["key_release,", Key] ->
-                    io:fwrite("Key released: ~p~n", [Key])
+                ["key_release", Key] ->
+                    io:fwrite("Key released: ~p~n", [Key]),
+                    Match_pid ! {key_release, Key, self()}
 
             end,
             match_comunicator(Socket, Match_pid);
+        {game_update, Match_data} ->
+            Player_data = extract_player_data(Match_data),
+            io:fwrite("Game update: ~p~n", [Player_data]),
+            gen_tcp:send(Socket, Player_data),
+            match_comunicator(Socket, Match_pid);
+
         {matchOver} ->
             io:fwrite("Match over~n"),
             gen_tcp:send(Socket, "Match over\n"),
@@ -170,3 +178,20 @@ match_comunicator(Socket, Match_pid) ->
             io:fwrite("Unknown message received~n"),
             match_comunicator(Socket, Match_pid)
     end.
+
+
+extract_player_data(Match_data) ->
+    Players = maps:get(players, Match_data),
+    [{_, P1}, {_, P2}] = maps:to_list(Players),
+    Username1 = maps:get(name, P1),
+    X1 = integer_to_list(maps:get(x, P1)),
+    Y1 = integer_to_list(maps:get(y, P1)),
+    Points1 = integer_to_list(maps:get(points, P1)),
+    Username2 = maps:get(name, P2),
+    X2 = integer_to_list(maps:get(x, P2)),
+    Y2 = integer_to_list(maps:get(y, P2)),
+    Points2 = integer_to_list(maps:get(points, P2)),
+    Data = lists:flatten(["Players,", Username1, ",", X1, ",", Y1, ",", Points1, ",",
+                          Username2, ",", X2, ",", Y2, ",", Points2]),
+    Data.
+

@@ -29,7 +29,6 @@ public class Player{
 
     public void renderPlayer(){
         pushMatrix();
-        translate(this.position.x, this.position.y);
         stroke(0);
         fill(this.r, this.g, this.b);
         circle(this.position.x, this.position.y, this.radius);
