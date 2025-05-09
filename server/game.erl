@@ -9,15 +9,17 @@ init(Player1, Player2) ->
     Pid1 ! {matchStarted, self()}, % Envia mensagem para o jogador 1 a dizer que o jogo começou
     Pid2 ! {matchStarted, self()}, % Envia mensagem para o jogador 2 a dizer que o jogo começou
     Match_data = #{players => Players}, % preciso adicionar tempo, items a este mapa final
-    server_comunicator(Match_data).
+    Shots = #{Pid1 => [], Pid2 => []},
+    Match_data1 = maps:put(shots, Shots, Match_data), % {shots => {Pid1 => [lista com listas de tiros], Pid2 => [lista com listas de tiros]}},
+    server_comunicator(Match_data1).
 
 
 initialize_players({Pid1, Username1}, {Pid2, Username2}) ->
     P1 = #{name => Username1, x => 50, y => 450, points => 0,
-           w => false, s => false, a => false, d => false, speed => 0,
+           w => false, s => false, a => false, d => false, numberShots => 0,
            accelerationX => 0, accelerationY => 0},
     P2 = #{name => Username2, x => 950, y => 450, points => 0,
-           w => false, s => false, a => false, d => false, speed => 0,
+           w => false, s => false, a => false, d => false, numberShots => 0,
            accelerationX => 0, accelerationY => 0},
     Players = #{Pid1 => P1, Pid2 => P2},
     Players.
@@ -37,8 +39,13 @@ server_comunicator(Match_data) ->
                      io:fwrite("Key released: ~p~n", [Key]), %debug
                      io:fwrite("Match_data1: ~p~n", [Match_data1]), %debug
                      Match_data2 = game_logic(Match_data1),
+                     server_comunicator(Match_data2);
+              {shot, X, Y, PlayerPid} ->
+                     X1 = list_to_integer(X),
+                     Y1 = list_to_integer(Y),
+                     Match_data1 = create_shot(Match_data, X1, Y1, PlayerPid),
+                     Match_data2 = game_logic(Match_data1),
                      server_comunicator(Match_data2)
-
               after 
                      33 ->
                             Match_data1 = game_logic(Match_data),
@@ -93,6 +100,30 @@ key_updater(TypeOfPress, Match_data, Key, PlayerPid) ->
        Match_data1 = maps:put(players, Players1, Match_data),
        Match_data1.
 
+create_shot(Match_data, X, Y, PlayerPid) ->
+       Players = maps:get(players, Match_data),
+       Shots = maps:get(shots, Match_data),
+       Player = maps:get(PlayerPid, Players),
+       PlayerShots = maps:get(PlayerPid, Shots),
+       PlayerNumberShots = maps:get(numberShots, Player),
+       NewPlayerNumberShots = PlayerNumberShots + 1,
+       Player1 = maps:put(numberShots, NewPlayerNumberShots, Player),
+       PlayerX = maps:get(x, Player1),
+       PlayerY = maps:get(y, Player1),
+       X1 = X - PlayerX, % fazer "translate" ao ponto do tiro para a sua posição relativa à origem
+       Y1 = Y - PlayerY, % ser a mesma que a sua posição inicial relativa ao jogador
+       Angle = math:atan2(Y1, X1), % Assim podemos calcular o ângulo do tiro relativo a (0,0) que será  mesmo
+                                   % que o angulo do seu ponto inicial relativo ao jogador
+       NewShot = [PlayerX, PlayerY, Angle],
+       PlayerShots1 = [NewShot | PlayerShots],
+       PlayerShots2 = lists:sublist(PlayerShots1, 5), % Limita o número de tiros a 5
+       Shots1 = maps:put(PlayerPid, PlayerShots2, Shots),
+       Players1 = maps:put(PlayerPid, Player1, Players),
+       Match_data1 = maps:put(players, Players1, Match_data),
+       Match_data2 = maps:put(shots, Shots1, Match_data1),
+       Match_data2.
+       
+
 
 game_logic(Match_data) ->
        Players = maps:get(players, Match_data),
@@ -107,13 +138,24 @@ game_logic(Match_data) ->
        P2_3 = maps:put(y, Y2, P2_2),
        P2_4 = maps:put(accelerationX, AccelerationX2, P2_3),
        P2_5 = maps:put(accelerationY, AccelerationY2, P2_4),
+
+       Shots = maps:get(shots, Match_data),
+       Player1Shots = maps:get(Pid1, Shots),
+       Player2Shots = maps:get(Pid2, Shots),
+       Player1Shots2 = movement_shots(Player1Shots, []),
+       Player2Shots2 = movement_shots(Player2Shots, []),
+
+       % Verificar Colisoes
        Players1 = maps:put(Pid1, P1_5, Players),
        Players2 = maps:put(Pid2, P2_5, Players1),
+       Shots1 = maps:put(Pid1, Player1Shots2, Shots),
+       Shots2 = maps:put(Pid2, Player2Shots2, Shots1),
        Match_data1 = maps:put(players, Players2, Match_data),
-       Pid1 ! {game_update, Match_data1}, % Envia mensagem para o jogador 1 com os dados atualizados
-       Pid2 ! {game_update, Match_data1}, % Envia mensagem para o jogador 2 com os dados atualizados
+       Match_data2 = maps:put(shots, Shots2, Match_data1),
+       Pid1 ! {game_update, Match_data2}, % Envia mensagem para o jogador 1 com os dados atualizados
+       Pid2 ! {game_update, Match_data2}, % Envia mensagem para o jogador 2 com os dados atualizados
        io:fwrite("Match_data1: ~p~n", [Match_data1]), %debug
-       Match_data1.
+       Match_data2.
        
 
 
@@ -188,3 +230,17 @@ movement(P) ->
        Y1 = Y + AccelerationY1,
        Result = {X1, Y1, AccelerationX1, AccelerationY1},
        Result.
+
+
+movement_shots([], PlayerShots) -> PlayerShots;
+movement_shots([H | T], PlayerShots) ->
+       io:fwrite("H: ~p~n", [H]), %debug
+       [X, Y, Angle] = H,
+       X1 = X + 30 * math:cos(Angle),
+       io:fwrite("X1: ~p~n", [X1]), %debug
+       Y1 = Y + 30 * math:sin(Angle),
+       io:fwrite("Y1: ~p~n", [Y1]), %debug
+       PlayerShots1 = [X1, Y1, Angle],
+       io:fwrite("PlayerShots1: ~p~n", [PlayerShots1]), %debug
+       PlayerShots2 = [PlayerShots1 | PlayerShots],
+       movement_shots(T, PlayerShots2).

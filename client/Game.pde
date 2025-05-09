@@ -13,8 +13,14 @@ private State currentState;
 
 private ConnectionManager cm;
 
-private Player player = new Player(0, 0, 255); // Player is blue
-private Player opponent = new Player(255, 0, 0); // Opponent is red
+private Player player = new Player(0, 0, 255); // Jogador é azul
+private Player opponent = new Player(255, 0, 0); // adversário é vermelho
+
+private Shot[] playerShots = new Shot[5]; // Array de tiros do jogador
+private Shot[] opponentShots = new Shot[5]; // Array de tiros do adversário
+
+private int previousShotTime = 0; // Tempo do último tiro disparado em milissegundos
+private int shotCooldown = 3000; // tempo de recarga do tiro em milissegundos
 
 private boolean matchThreadStarted = false;
 
@@ -66,6 +72,11 @@ void setup() {
 
     passwordBox = new InputBox("Images/password_box.png", 0, 0);
     passwordBox.updatePosition(width/2 - passwordBox.width/2, height/2);
+
+    for (int i = 0; i < 5; i++) {
+    playerShots[i] = new Shot(); // Tiros do jogador são azuis
+    opponentShots[i] = new Shot(); // Tiros do adversário são vermelhos
+    }
 }
 
 void draw() {
@@ -104,6 +115,12 @@ void draw() {
         case PLAYING:        
             player.renderPlayer();
             opponent.renderPlayer();
+            for (int i = 0; i < playerShots.length; i++) {
+                playerShots[i].renderShot();
+                playerShots[i].deactivateShot(); // esperar pela proxima mensagem do server para saber se ainda esta ativo
+                opponentShots[i].renderShot();
+                opponentShots[i].deactivateShot(); // esperar pela proxima mensagem do server para saber se ainda esta ativo
+            }
     
             if (matchThreadStarted == false){
                 matchThreadStarted = true;
@@ -259,6 +276,13 @@ void mousePressed() {
             
         }
     }
+    else if(currentState == State.PLAYING) {
+        if (mouseButton == LEFT && shotCooldown < millis() - previousShotTime) {
+            this.cm.sendShot(mouseX, mouseY);
+            previousShotTime = millis();
+        }
+    }
+
     else if(currentState == State.MATCH_OVER) {
         if (playAgainButton.isMouseOver() && mouseButton == LEFT) {
             
@@ -301,7 +325,26 @@ void parser(){
                 opponent.updatePlayer(name1, x1, y1, points1);
                 player.updatePlayer(name2, x2, y2, points2);
             }
+        } else if(parts[0].equals("ShotsPlayer")){ // "ShotsPlayer,num de shots ex:2,x1,y1,x2,y2"
+            int numShots = Integer.parseInt(parts[1]);
+            int c = 0;
+            for (int i = 2; i < 2 + numShots * 2; i += 2, c += 1) {
+                float x = Float.parseFloat(parts[i]);
+                float y = Float.parseFloat(parts[i + 1]);
+                playerShots[c].updateShot(x, y);
+                playerShots[c].activateShot();
+            }
+        } else if(parts[0].equals("ShotsOpponent")){ // "ShotsOpponent,num de shots ex:2,x1,y1,x2,y2"
+            int numShots = Integer.parseInt(parts[1]);
+            int c = 0;
+            for (int i = 2; i < 2 + numShots * 2; i += 2, c += 1) {
+                float x = Float.parseFloat(parts[i]);
+                float y = Float.parseFloat(parts[i + 1]);
+                opponentShots[c].updateShot(x, y);
+                opponentShots[c].activateShot();
+            }
         }
+
         message = this.cm.receiveMessage();
         println("Message: " + message);
     }

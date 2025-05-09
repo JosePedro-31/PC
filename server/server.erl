@@ -4,11 +4,11 @@
 -import(user_functions, [accounts_manager/1]).
 -import(game, [init/2]).
 
--export ([start/1, server/1, stop/1]).
+-export ([s/0, server/1, stop/1]).
 
 
-
-start(Port) -> register(servidor, spawn(fun() -> server(Port) end)).
+% mudar para como estava
+s() -> register(servidor, spawn(fun() -> server(1111) end)).
 
 stop(Server) -> Server ! stop.
 
@@ -160,14 +160,22 @@ match_comunicator(Socket, Match_pid) ->
 
                 ["key_release", Key] ->
                     io:fwrite("Key released: ~p~n", [Key]),
-                    Match_pid ! {keyRelease, Key, self()}
+                    Match_pid ! {keyRelease, Key, self()};
+                ["shot", X, Y] ->
+                    io:fwrite("Shot fired: ~p, ~p~n", [X, Y]),
+                    Match_pid ! {shot, X, Y, self()}
 
             end,
             match_comunicator(Socket, Match_pid);
         {game_update, Match_data} ->
             Player_data = extract_player_data(Match_data),
+            {ShotsPlayer, ShotsOponent} = extract_shots(Match_data),
             io:fwrite("Game update: ~p~n", [Player_data]),
+            io:fwrite("Shots player: ~p~n", [ShotsPlayer]),
+            io:fwrite("Shots oponent: ~p~n", [ShotsOponent]),
             gen_tcp:send(Socket, Player_data),
+            gen_tcp:send(Socket, ShotsPlayer),
+            gen_tcp:send(Socket, ShotsOponent),
             match_comunicator(Socket, Match_pid);
 
         {matchOver} ->
@@ -195,3 +203,52 @@ extract_player_data(Match_data) ->
                           Username2, ",", X2, ",", Y2, ",", Points2, "\n"]),
     Data.
 
+extract_shots(Match_data) ->
+    Shots = maps:get(shots, Match_data),
+    [{Pid1, ShotsPlayer1}, {Pid2, ShotsPlayer2}] = maps:to_list(Shots),
+    Players = maps:get(players, Match_data),
+    if 
+        Pid1 == self() ->
+            ShotsPlayer = ShotsPlayer1,
+            ShotsOpponent = ShotsPlayer2,
+            Player = maps:get(Pid1, Players),
+            Oponent = maps:get(Pid2, Players);
+        true ->
+            ShotsPlayer = ShotsPlayer2,
+            ShotsOpponent = ShotsPlayer1,
+            Player = maps:get(Pid2, Players),
+            Oponent = maps:get(Pid1, Players)
+    end,
+    NumberShotsPlayer = integer_to_list(maps:get(numberShots, Player)),
+    NumberShotsOponent = integer_to_list(maps:get(numberShots, Oponent)),
+    if 
+        NumberShotsPlayer == "0" ->
+            DataPlayer = "\n";
+        true ->
+            DataPlayer = lists:flatten(["ShotsPlayer,", NumberShotsPlayer])
+    end,
+    if 
+        NumberShotsOponent == "0" ->
+            DataOponent = "\n";
+        true ->
+            DataOponent = lists:flatten(["ShotsOpponent,", NumberShotsOponent])
+    end,
+    DataPlayer2 = extract_shots_data(ShotsPlayer, DataPlayer),
+    DataOponent2 = extract_shots_data(ShotsOpponent, DataOponent),
+    {DataPlayer2, DataOponent2}.
+    
+
+
+extract_shots_data([], Data) -> Data;
+extract_shots_data([H | T], Data) ->
+    [X, Y, _] = H,
+    X1 = float_to_list(X, [{decimals, 2}]), % Converte o float para string com 2 casas decimais
+    Y1 = float_to_list(Y, [{decimals, 2}]),
+    case T of
+        [] -> % Se H for o último elemento da lista adiciona o \n
+            Data1 = lists:flatten([",", X1, ",", Y1, "\n"]);
+        _ -> % Se H não for o último elemento da lista não adiciona o \n
+            Data1 = lists:flatten([",", X1, ",", Y1])
+    end,
+    Data2 = lists:flatten([Data, Data1]),
+    extract_shots_data(T, Data2).
