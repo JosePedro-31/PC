@@ -71,5 +71,10 @@ public class ConnectionManager {
       this.out.flush();
     }
   }
+
+  public void sendShot(int x, int y) {
+    this.out.println("shot," + x + "," + y);
+    this.out.flush();
+  }
   
 }
