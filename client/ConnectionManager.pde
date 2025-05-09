@@ -66,8 +66,10 @@ public class ConnectionManager {
   }
 
   public void sendKeyRelease(char key) {
-    this.out.println("key_release," + key);
-    this.out.flush();
+    if(key == 'w' || key == 'a' || key == 's' || key == 'd') {
+      this.out.println("key_release," + key);
+      this.out.flush();
+    }
   }
   
 }
