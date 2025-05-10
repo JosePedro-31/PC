@@ -2,7 +2,7 @@ public class Player{
 
     private PVector position = new PVector(0, 0); // Player position
     private float radius = 20; // Player radius
-    private float points;
+    private int points;
     private float r, g, b; // Player color
     private String name; // Player name
 
@@ -13,7 +13,7 @@ public class Player{
         this.points = 0;
     }
 
-    public void updatePlayer(String name ,float x, float y, float points) {
+    public void updatePlayer(String name ,float x, float y, int points) {
         this.name = name;
         this.position.x = x;
         this.position.y = y;
@@ -25,6 +25,10 @@ public class Player{
     }
     public String getName() {
         return this.name;
+    }
+
+    public int getPoints() {
+        return this.points;
     }
 
     public void renderPlayer(){
