@@ -140,21 +140,24 @@ game_logic(Match_data) ->
        P2_5 = maps:put(accelerationY, AccelerationY2, P2_4),
 
        Shots = maps:get(shots, Match_data),
-       Player1Shots = maps:get(Pid1, Shots),
-       Player2Shots = maps:get(Pid2, Shots),
-       Player1Shots2 = movement_shots(Player1Shots, []),
-       Player2Shots2 = movement_shots(Player2Shots, []),
+       Player1_Shots = maps:get(Pid1, Shots),
+       Player2_Shots = maps:get(Pid2, Shots),
+       Player1_Shots2 = movement_shots(Player1_Shots, []),
+       Player2_Shots2 = movement_shots(Player2_Shots, []),
 
        % Verificar Colisoes
-       Players1 = maps:put(Pid1, P1_5, Players),
-       Players2 = maps:put(Pid2, P2_5, Players1),
-       Shots1 = maps:put(Pid1, Player1Shots2, Shots),
-       Shots2 = maps:put(Pid2, Player2Shots2, Shots1),
+       {P1_6, P2_6, Player2_Shots3} = colision_player_shot(P1_5, P2_5, Player2_Shots2, Player2_Shots2),
+       {P2_7, P1_7, Player1_Shots3} = colision_player_shot(P2_6, P1_6, Player1_Shots2, Player1_Shots2),
+
+       Players1 = maps:put(Pid1, P1_7, Players),
+       Players2 = maps:put(Pid2, P2_7, Players1),
+       Shots1 = maps:put(Pid1, Player1_Shots3, Shots),
+       Shots2 = maps:put(Pid2, Player2_Shots3, Shots1),
        Match_data1 = maps:put(players, Players2, Match_data),
        Match_data2 = maps:put(shots, Shots2, Match_data1),
        Pid1 ! {game_update, Match_data2}, % Envia mensagem para o jogador 1 com os dados atualizados
        Pid2 ! {game_update, Match_data2}, % Envia mensagem para o jogador 2 com os dados atualizados
-       io:fwrite("Match_data1: ~p~n", [Match_data1]), %debug
+       io:fwrite("Match_data1: ~p~n", [Match_data2]), %debug
        Match_data2.
        
 
@@ -244,3 +247,25 @@ movement_shots([H | T], PlayerShots) ->
        io:fwrite("PlayerShots1: ~p~n", [PlayerShots1]), %debug
        PlayerShots2 = [PlayerShots1 | PlayerShots],
        movement_shots(T, PlayerShots2).
+
+colision_player_shot(Player, Opponent, [], ShotsOpponent) -> {Player, Opponent, ShotsOpponent};
+colision_player_shot(Player, Opponent, [H | T], ShotsOpponent) ->
+       PlayerX = maps:get(x, Player),
+       PlayerY = maps:get(y, Player),
+       OpponentPoints = maps:get(points, Opponent),
+       NumberShotsOpponent = maps:get(numberShots, Opponent),
+       PlayerRadius = 20,
+       [ShotX, ShotY, _] = H,
+       ShotRadius = 10,
+       Distance = math:sqrt(math:pow(ShotX - PlayerX, 2) + math:pow(ShotY - PlayerY, 2)),
+       if
+              Distance =< (PlayerRadius + ShotRadius) ->
+                     Opponent1 = maps:put(points, OpponentPoints + 1, Opponent),
+                     Opponent2 = maps:put(numberShots, NumberShotsOpponent - 1, Opponent1),
+                     ShotsOpponent1 = lists:delete(H, ShotsOpponent);
+              true ->
+                     Opponent2 = Opponent,
+                     ShotsOpponent1 = ShotsOpponent
+       end,
+       colision_player_shot(Player, Opponent2, T, ShotsOpponent1).
+                     

@@ -241,6 +241,7 @@ extract_shots(Match_data) ->
 
 extract_shots_data([], Data) -> Data;
 extract_shots_data([H | T], Data) ->
+    io:fwrite("Shot: ~p~n", [H]),
     [X, Y, _] = H,
     X1 = float_to_list(X, [{decimals, 2}]), % Converte o float para string com 2 casas decimais
     Y1 = float_to_list(Y, [{decimals, 2}]),

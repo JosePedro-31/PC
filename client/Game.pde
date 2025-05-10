@@ -115,6 +115,13 @@ void draw() {
         case PLAYING:        
             player.renderPlayer();
             opponent.renderPlayer();
+
+            fill(255);
+            textSize(20);
+            text(player.getName() + ": " + player.getPoints() + " Points", 20, 30);
+            
+            text(opponent.getName() + ": " + opponent.getPoints() + " Points", 800, 30);
+
             for (int i = 0; i < playerShots.length; i++) {
                 playerShots[i].renderShot();
                 playerShots[i].deactivateShot(); // esperar pela proxima mensagem do server para saber se ainda esta ativo
@@ -312,11 +319,11 @@ void parser(){
             String name1 = parts[1];
             float x1 = Float.parseFloat(parts[2]);
             float y1 = Float.parseFloat(parts[3]);
-            float points1 = Float.parseFloat(parts[4]);
+            int points1 = Integer.parseInt(parts[4]);
             String name2 = parts[5];
             float x2 = Float.parseFloat(parts[6]);
             float y2 = Float.parseFloat(parts[7]);
-            float points2 = Float.parseFloat(parts[8]);
+            int points2 = Integer.parseInt(parts[8]);
 
             if (name1.equals(player.getName())){
                 player.updatePlayer(name1, x1, y1, points1);
