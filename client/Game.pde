@@ -1,3 +1,4 @@
+import processing.sound.*;
 
 private enum State{
     MENU,
@@ -16,11 +17,11 @@ private ConnectionManager cm;
 private Player player = new Player(0, 0, 255); // Jogador é azul
 private Player opponent = new Player(255, 0, 0); // adversário é vermelho
 
-private Shot[] playerShots = new Shot[5]; // Array de tiros do jogador
-private Shot[] opponentShots = new Shot[5]; // Array de tiros do adversário
+private Shot[] playerShots = new Shot[7]; // Array de tiros do jogador
+private Shot[] opponentShots = new Shot[7]; // Array de tiros do adversário
 
 private int previousShotTime = 0; // Tempo do último tiro disparado em milissegundos
-private int shotCooldown = 3000; // tempo de recarga do tiro em milissegundos
+private int shotCooldown = 250; // tempo de recarga do tiro em milissegundos
 
 private boolean matchThreadStarted = false;
 
@@ -34,12 +35,16 @@ private Button playAgainButton;
 private InputBox usernameBox;
 private InputBox passwordBox;
 
+private SoundFile battleTheme;
+
 private char previousKey = ' ';
 
 void setup() {
     size(1000, 600);
     background(1);
     currentState = State.MENU;
+
+    battleTheme = new SoundFile(this, "Sound/ducktales_moon_theme.wav");
     
     try {
         cm = new ConnectionManager("192.168.1.162", 1111); // Connect to the server
@@ -73,7 +78,7 @@ void setup() {
     passwordBox = new InputBox("Images/password_box.png", 0, 0);
     passwordBox.updatePosition(width/2 - passwordBox.width/2, height/2);
 
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 7; i++) {
     playerShots[i] = new Shot(); // Tiros do jogador são azuis
     opponentShots[i] = new Shot(); // Tiros do adversário são vermelhos
     }
@@ -110,6 +115,7 @@ void draw() {
             String response = this.cm.receiveMessage();
             if(response.equals("Match started")){
                 currentState = State.PLAYING;
+                battleTheme.play();
             }
             break;
         case PLAYING:        
@@ -124,9 +130,7 @@ void draw() {
 
             for (int i = 0; i < playerShots.length; i++) {
                 playerShots[i].renderShot();
-                playerShots[i].deactivateShot(); // esperar pela proxima mensagem do server para saber se ainda esta ativo
                 opponentShots[i].renderShot();
-                opponentShots[i].deactivateShot(); // esperar pela proxima mensagem do server para saber se ainda esta ativo
             }
     
             if (matchThreadStarted == false){
@@ -341,6 +345,10 @@ void parser(){
                 playerShots[c].updateShot(x, y);
                 playerShots[c].activateShot();
             }
+            while (c < playerShots.length) { // Deactivate remaining shots
+                playerShots[c].deactivateShot();
+                c++;
+            }
         } else if(parts[0].equals("ShotsOpponent")){ // "ShotsOpponent,num de shots ex:2,x1,y1,x2,y2"
             int numShots = Integer.parseInt(parts[1]);
             int c = 0;
@@ -349,6 +357,10 @@ void parser(){
                 float y = Float.parseFloat(parts[i + 1]);
                 opponentShots[c].updateShot(x, y);
                 opponentShots[c].activateShot();
+            }
+            while (c < opponentShots.length) { // Deactivate remaining shots
+                opponentShots[c].deactivateShot();
+                c++;
             }
         }
 

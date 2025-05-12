@@ -15,12 +15,12 @@ init(Player1, Player2) ->
 
 
 initialize_players({Pid1, Username1}, {Pid2, Username2}) ->
-    P1 = #{name => Username1, x => 50, y => 450, points => 0,
+    P1 = #{name => Username1, x => 250, y => 300, points => 0,
            w => false, s => false, a => false, d => false, numberShots => 0,
-           accelerationX => 0, accelerationY => 0},
-    P2 = #{name => Username2, x => 950, y => 450, points => 0,
+           accelerationX => 0, accelerationY => 0, spawnX => 250, spawnY => 300},
+    P2 = #{name => Username2, x => 750, y => 300, points => 0,
            w => false, s => false, a => false, d => false, numberShots => 0,
-           accelerationX => 0, accelerationY => 0},
+           accelerationX => 0, accelerationY => 0, spawnX => 750, spawnY => 300},
     Players = #{Pid1 => P1, Pid2 => P2},
     Players.
 
@@ -47,7 +47,7 @@ server_comunicator(Match_data) ->
                      Match_data2 = game_logic(Match_data1),
                      server_comunicator(Match_data2)
               after 
-                     33 ->
+                     25 ->
                             Match_data1 = game_logic(Match_data),
                             server_comunicator(Match_data1)
        end.
@@ -116,7 +116,7 @@ create_shot(Match_data, X, Y, PlayerPid) ->
                                    % que o angulo do seu ponto inicial relativo ao jogador
        NewShot = [PlayerX, PlayerY, Angle],
        PlayerShots1 = [NewShot | PlayerShots],
-       PlayerShots2 = lists:sublist(PlayerShots1, 5), % Limita o número de tiros a 5
+       PlayerShots2 = lists:sublist(PlayerShots1, 7), % Limita o número de tiros a 7
        Shots1 = maps:put(PlayerPid, PlayerShots2, Shots),
        Players1 = maps:put(PlayerPid, Player1, Players),
        Match_data1 = maps:put(players, Players1, Match_data),
@@ -128,6 +128,8 @@ create_shot(Match_data, X, Y, PlayerPid) ->
 game_logic(Match_data) ->
        Players = maps:get(players, Match_data),
        [{Pid1, P1}, {Pid2, P2}] = maps:to_list(Players),
+
+       % Atualizar a posição dos jogadores
        {X1, Y1, AccelerationX1, AccelerationY1} = movement(P1),
        {X2, Y2, AccelerationX2, AccelerationY2} = movement(P2),
        P1_2 = maps:put(x, X1, P1),
@@ -139,6 +141,7 @@ game_logic(Match_data) ->
        P2_4 = maps:put(accelerationX, AccelerationX2, P2_3),
        P2_5 = maps:put(accelerationY, AccelerationY2, P2_4),
 
+       % atualizar a posição dos tiros
        Shots = maps:get(shots, Match_data),
        Player1_Shots = maps:get(Pid1, Shots),
        Player2_Shots = maps:get(Pid2, Shots),
@@ -149,10 +152,15 @@ game_logic(Match_data) ->
        {P1_6, P2_6, Player2_Shots3} = colision_player_shot(P1_5, P2_5, Player2_Shots2, Player2_Shots2),
        {P2_7, P1_7, Player1_Shots3} = colision_player_shot(P2_6, P1_6, Player1_Shots2, Player1_Shots2),
 
-       Players1 = maps:put(Pid1, P1_7, Players),
-       Players2 = maps:put(Pid2, P2_7, Players1),
-       Shots1 = maps:put(Pid1, Player1_Shots3, Shots),
-       Shots2 = maps:put(Pid2, Player2_Shots3, Shots1),
+       {P1_8, Player1_Shots4} = collision_shot_wall(P1_7 ,Player1_Shots3, []),
+       {P2_8, Player2_Shots4} = collision_shot_wall(P2_7, Player2_Shots3, []),
+
+       {P1_9, P2_9} = collision_player_wall(P1_8, P2_8),
+
+       Players1 = maps:put(Pid1, P1_9, Players),
+       Players2 = maps:put(Pid2, P2_9, Players1),
+       Shots1 = maps:put(Pid1, Player1_Shots4, Shots),
+       Shots2 = maps:put(Pid2, Player2_Shots4, Shots1),
        Match_data1 = maps:put(players, Players2, Match_data),
        Match_data2 = maps:put(shots, Shots2, Match_data1),
        Pid1 ! {game_update, Match_data2}, % Envia mensagem para o jogador 1 com os dados atualizados
@@ -269,3 +277,62 @@ colision_player_shot(Player, Opponent, [H | T], ShotsOpponent) ->
        end,
        colision_player_shot(Player, Opponent2, T, ShotsOpponent1).
                      
+
+collision_shot_wall(Player, [], Shots) -> {Player, Shots};
+collision_shot_wall(Player, [H | T], Shots) ->
+       [X, Y, _] = H,
+       ShotRadius = 10,
+       NumberShotsPlayer = maps:get(numberShots, Player),
+       if     % Verifica se o tiro colidiu com a parede
+              ((X + ShotRadius) >= 1000) or ((X - ShotRadius) =< 0) or ((Y + ShotRadius) >= 600) or ((Y - ShotRadius) =< 0) ->
+                     Shots1 = Shots,
+                     Player1 = maps:put(numberShots, NumberShotsPlayer - 1, Player);
+       true ->% Caso não tenha havido colisão
+                     Shots1 = [H | Shots],
+                     Player1 = Player
+       end,
+       collision_shot_wall(Player1, T, Shots1).
+
+
+collision_player_wall(Player, Oponent) ->
+       PlayerX = maps:get(x, Player),
+       PlayerY = maps:get(y, Player),
+       Player_spawnX = maps:get(spawnX, Player),
+       Player_spawnY = maps:get(spawnY, Player),
+       PlayerPoints = maps:get(points, Player),
+       Radius = 20,
+       OponentX = maps:get(x, Oponent),
+       OponentY = maps:get(y, Oponent),
+       Oponent_spawnX = maps:get(spawnX, Oponent),
+       Oponent_spawnY = maps:get(spawnY, Oponent),
+       OponentPoints = maps:get(points, Oponent),
+       if
+              ((PlayerX + Radius) >= 1000) or ((PlayerX - Radius) =< 0) or ((PlayerY + Radius) >= 600) or ((PlayerY - Radius) =< 0) ->
+                     % Dá respawn e adiciona 2 pontos ao adversario
+                     Player1 = maps:put(x, Player_spawnX, Player), 
+                     Player3 = maps:put(y, Player_spawnY, Player1),
+                     Player4 = maps:put(accelerationX, 0, Player3),
+                     Player5 = maps:put(accelerationY, 0, Player4),
+                     Oponent1 = maps:put(x, Oponent_spawnX, Oponent),
+                     Oponent2 = maps:put(y, Oponent_spawnY, Oponent1),
+                     Oponent3 = maps:put(accelerationX, 0, Oponent2),
+                     Oponent4 = maps:put(accelerationY, 0, Oponent3),
+                     Oponent5 = maps:put(points, OponentPoints + 2, Oponent4);
+              
+              ((OponentX + Radius) >= 1000) or ((OponentX - Radius) =< 0) or ((OponentY + Radius) >= 600) or ((OponentY - Radius) =< 0) ->
+                     % Dá respawn e adiciona 2 pontos ao Player
+                     Player1 = maps:put(x, Player_spawnX, Player), 
+                     Player2 = maps:put(y, Player_spawnY, Player1),
+                     Player3 = maps:put(accelerationX, 0, Player2),
+                     Player4 = maps:put(accelerationY, 0, Player3),
+                     Player5 = maps:put(points, PlayerPoints + 2, Player4),
+                     Oponent1 = maps:put(x, Oponent_spawnX, Oponent), 
+                     Oponent3 = maps:put(y, Oponent_spawnY, Oponent1),
+                     Oponent4 = maps:put(accelerationX, 0, Oponent3),
+                     Oponent5 = maps:put(accelerationY, 0, Oponent4);
+
+              true ->
+                     Player5 = Player,
+                     Oponent5 = Oponent
+       end,
+       {Player5, Oponent5}.

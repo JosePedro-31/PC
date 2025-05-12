@@ -221,21 +221,15 @@ extract_shots(Match_data) ->
     end,
     NumberShotsPlayer = integer_to_list(maps:get(numberShots, Player)),
     NumberShotsOponent = integer_to_list(maps:get(numberShots, Oponent)),
-    if 
-        NumberShotsPlayer == "0" ->
-            DataPlayer = "\n";
-        true ->
-            DataPlayer = lists:flatten(["ShotsPlayer,", NumberShotsPlayer])
-    end,
-    if 
-        NumberShotsOponent == "0" ->
-            DataOponent = "\n";
-        true ->
-            DataOponent = lists:flatten(["ShotsOpponent,", NumberShotsOponent])
-    end,
+
+    DataPlayer = lists:flatten(["ShotsPlayer,", NumberShotsPlayer]),
+    DataOponent = lists:flatten(["ShotsOpponent,", NumberShotsOponent]),
+    
     DataPlayer2 = extract_shots_data(ShotsPlayer, DataPlayer),
     DataOponent2 = extract_shots_data(ShotsOpponent, DataOponent),
-    {DataPlayer2, DataOponent2}.
+    DataPlayer3 = lists:flatten([DataPlayer2, "\n"]),
+    DataOponent3 = lists:flatten([DataOponent2, "\n"]),
+    {DataPlayer3, DataOponent3}.
     
 
 
@@ -245,11 +239,6 @@ extract_shots_data([H | T], Data) ->
     [X, Y, _] = H,
     X1 = float_to_list(X, [{decimals, 2}]), % Converte o float para string com 2 casas decimais
     Y1 = float_to_list(Y, [{decimals, 2}]),
-    case T of
-        [] -> % Se H for o último elemento da lista adiciona o \n
-            Data1 = lists:flatten([",", X1, ",", Y1, "\n"]);
-        _ -> % Se H não for o último elemento da lista não adiciona o \n
-            Data1 = lists:flatten([",", X1, ",", Y1])
-    end,
+    Data1 = lists:flatten([",", X1, ",", Y1]),
     Data2 = lists:flatten([Data, Data1]),
     extract_shots_data(T, Data2).
