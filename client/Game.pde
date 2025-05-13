@@ -38,6 +38,8 @@ private InputBox passwordBox;
 private SoundFile battleTheme;
 
 private char previousKey = ' ';
+private String MatchResult;
+private String CurrentTime;
 
 void setup() {
     size(1000, 600);
@@ -125,7 +127,7 @@ void draw() {
             fill(255);
             textSize(20);
             text(player.getName() + ": " + player.getPoints() + " Points", 20, 30);
-            
+            text("Time: " + CurrentTime, 490, 30);
             text(opponent.getName() + ": " + opponent.getPoints() + " Points", 800, 30);
 
             for (int i = 0; i < playerShots.length; i++) {
@@ -141,6 +143,10 @@ void draw() {
             break;
         case MATCH_OVER:
             //escrever o resultado do jogo
+            matchThreadStarted = false;
+            textSize(50);
+            fill(255);
+            text(MatchResult, width/2 - textWidth(MatchResult)/2, height/2 - 50);
             playAgainButton.draw();
             backButton.draw();
             break;
@@ -314,10 +320,11 @@ void mousePressed() {
 
 void parser(){
     // This function is called in a separate thread to parse messages from the server
-    println("Parser thread started...");
-    String message = this.cm.receiveMessage();
-    println("Message: " + message);
-    while (true) {
+    boolean game_going = true;
+    while (game_going) {
+        println("Parser thread started...");
+        String message = this.cm.receiveMessage();
+        println("Message: " + message);
         String[] parts = message.split(",");
         if (parts[0].equals("Players")){ // "Players,username1,x1,y1,points1,username2,x2,y2,points2"
             String name1 = parts[1];
@@ -362,10 +369,26 @@ void parser(){
                 opponentShots[c].deactivateShot();
                 c++;
             }
-        }
+        } else if(parts[0].equals("Time")){ // "Time,tempo_atual"
+            CurrentTime = parts[1];
+        } else if(parts[0].equals("GameOver")){ // "GameOver,resultado"
+            MatchResult = parts[1];
+            game_going = false;
+            currentState = State.MATCH_OVER;
 
-        message = this.cm.receiveMessage();
-        println("Message: " + message);
+        } else if(message.equals("GameWon")){
+            MatchResult = "You won!";
+            game_going = false;
+            currentState = State.MATCH_OVER;
+        } else if(message.equals("GameLost")){
+            MatchResult = "You lost!";
+            game_going = false;
+            currentState = State.MATCH_OVER;
+        } else if(message.equals("GameDraw")){
+            MatchResult = "It's a draw!";
+            game_going = false;
+            currentState = State.MATCH_OVER;
+        }
     }
 }
 

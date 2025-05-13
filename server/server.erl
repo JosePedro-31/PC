@@ -167,20 +167,27 @@ match_comunicator(Socket, Match_pid) ->
 
             end,
             match_comunicator(Socket, Match_pid);
-        {game_update, Match_data} ->
+        {game_update, Match_data, CurrentTime} ->
             Player_data = extract_player_data(Match_data),
             {ShotsPlayer, ShotsOponent} = extract_shots(Match_data),
+            Time = extract_time(CurrentTime),
             io:fwrite("Game update: ~p~n", [Player_data]),
             io:fwrite("Shots player: ~p~n", [ShotsPlayer]),
             io:fwrite("Shots oponent: ~p~n", [ShotsOponent]),
             gen_tcp:send(Socket, Player_data),
             gen_tcp:send(Socket, ShotsPlayer),
             gen_tcp:send(Socket, ShotsOponent),
+            gen_tcp:send(Socket, Time),
             match_comunicator(Socket, Match_pid);
 
-        {matchOver} ->
-            io:fwrite("Match over~n"),
-            gen_tcp:send(Socket, "Match over\n"),
+        {game_won, Username} ->
+            gen_tcp:send(Socket, "GameWon\n"),
+            comunicator(Socket);
+        {game_lost, Username} ->
+            gen_tcp:send(Socket, "GameLost\n"),
+            comunicator(Socket);
+        {game_draw} ->
+            gen_tcp:send(Socket, "GameDraw\n"),
             comunicator(Socket);
         _ ->
             io:fwrite("Unknown message received~n"),
@@ -242,3 +249,8 @@ extract_shots_data([H | T], Data) ->
     Data1 = lists:flatten([",", X1, ",", Y1]),
     Data2 = lists:flatten([Data, Data1]),
     extract_shots_data(T, Data2).
+
+extract_time(CurrentTime) ->
+    Time = integer_to_list(CurrentTime),
+    Time1 = lists:flatten(["Time,", Time, "\n"]),
+    Time1.
