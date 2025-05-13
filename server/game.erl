@@ -11,7 +11,9 @@ init(Player1, Player2) ->
     Match_data = #{players => Players}, % preciso adicionar tempo, items a este mapa final
     Shots = #{Pid1 => [], Pid2 => []},
     Match_data1 = maps:put(shots, Shots, Match_data), % {shots => {Pid1 => [lista com listas de tiros], Pid2 => [lista com listas de tiros]}},
-    server_comunicator(Match_data1).
+    StartTime = os:timestamp(),
+    Match_data2 = maps:put(startTime, StartTime, Match_data1),
+    server_comunicator(Match_data2).
 
 
 initialize_players({Pid1, Username1}, {Pid2, Username2}) ->
@@ -163,10 +165,19 @@ game_logic(Match_data) ->
        Shots2 = maps:put(Pid2, Player2_Shots4, Shots1),
        Match_data1 = maps:put(players, Players2, Match_data),
        Match_data2 = maps:put(shots, Shots2, Match_data1),
-       Pid1 ! {game_update, Match_data2}, % Envia mensagem para o jogador 1 com os dados atualizados
-       Pid2 ! {game_update, Match_data2}, % Envia mensagem para o jogador 2 com os dados atualizados
-       io:fwrite("Match_data1: ~p~n", [Match_data2]), %debug
-       Match_data2.
+
+       StartTime = maps:get(startTime, Match_data2),
+       CurrentTime = calculate_time(StartTime),
+
+       if 
+              CurrentTime >= 20 ->
+                     end_game(Match_data2);
+              true ->
+                     Pid1 ! {game_update, Match_data2, CurrentTime}, % Envia mensagem para o jogador 1 com os dados atualizados
+                     Pid2 ! {game_update, Match_data2, CurrentTime}, % Envia mensagem para o jogador 2 com os dados atualizados
+                     Match_data2
+       end.
+
        
 
 
@@ -336,3 +347,29 @@ collision_player_wall(Player, Oponent) ->
                      Oponent5 = Oponent
        end,
        {Player5, Oponent5}.
+
+calculate_time(StartTime) ->
+       CurrentTime = os:timestamp(),
+       % Devolve a diferença em microssegundos, divisão inteira por 1000000 converte para segundos
+       Time = timer:now_diff(CurrentTime, StartTime) div 1000000, 
+       Time.
+
+end_game(Match_data) ->
+       Players = maps:get(players, Match_data),
+       [{Pid1, P1}, {Pid2, P2}] = maps:to_list(Players),
+       P1_points = maps:get(points, P1),
+       P2_points = maps:get(points, P2),
+       P1_username = maps:get(name, P1),
+       P2_username = maps:get(name, P2),
+       if
+              P1_points > P2_points ->
+                     Pid1 ! {game_won, P1_username},
+                     Pid2 ! {game_lost, P2_username};
+              P1_points < P2_points ->
+                     Pid1 ! {game_lost, P1_username},
+                     Pid2 ! {game_won, P2_username};
+              true ->
+                     Pid1 ! {game_draw},
+                     Pid2 ! {game_draw}
+       end,
+       exit(0). % Termina o processo do jogo
