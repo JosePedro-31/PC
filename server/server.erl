@@ -123,27 +123,17 @@ lobby(Pids) ->
     end.
 
 
-matchMaking([]) -> noMatch;
-matchMaking ([H | T]) ->
-    Result = same_level(H, T),
-    case Result of
-        {matchFound, User1, User2} ->
-            {matchFound, User1, User2};
-        noMatch ->
-            noMatch
-    end.
-
-same_level(_, []) -> noMatch;
-same_level(User1, [User2 | T]) ->
+matchMaking([_ | []]) -> noMatch;
+matchMaking ([User1 | T]) ->
     {_, Level1, _} = User1,
-    case User2 of
-        {_, Level2, _} ->
-            if
-                Level1 == Level2 ->
-                    {matchFound, User1, User2};
-                true ->
-                    same_level(User1, T)
-            end
+    [User2 | T1] = T,
+    {_, Level2, _} = User2,
+    Level_diference = abs(Level1 - Level2),
+    if
+        Level_diference =< 1 ->
+            {matchFound, User1, User2};
+        true ->
+            matchMaking([User1 | T1]) %continua a procurar por um utilizador para fazer match
     end.
 
 
@@ -182,9 +172,11 @@ match_comunicator(Socket, Match_pid) ->
 
         {game_won, Username} ->
             gen_tcp:send(Socket, "GameWon\n"),
+            accountsProcess ! {game_won, Username},
             comunicator(Socket);
         {game_lost, Username} ->
             gen_tcp:send(Socket, "GameLost\n"),
+            accountsProcess ! {game_lost, Username},
             comunicator(Socket);
         {game_draw} ->
             gen_tcp:send(Socket, "GameDraw\n"),
