@@ -1,6 +1,6 @@
 -module(user_functions).
 
--export([accounts_manager/1]).
+-export([accounts_manager/1, get_top10/1]).
 
 -import(file_functions, [write_content/2]).
 
@@ -26,7 +26,11 @@ accounts_manager(Accounts) ->
             accounts_manager(New_accounts);
         {game_lost, Username} ->
             New_accounts = game_lost(Accounts, Username),
-            accounts_manager(New_accounts)
+            accounts_manager(New_accounts);
+        {top10, From} ->
+            Top10 = get_top10(Accounts),
+            From ! Top10,
+            accounts_manager(Accounts)
     end.
 
 login(Accounts, Username, Password, From) ->
@@ -104,3 +108,37 @@ game_lost(Accounts, Username) ->
     file_functions:write_content("teste", New_accounts),
     New_accounts.
     
+get_top10(Accounts) ->
+    Accounts_list = maps:to_list(Accounts), % [{Username, {Password, Level, WinLossSequence}}]
+    Accounts_list1 = convert_to_list_of_tuples(Accounts_list, []), %[{Username, Level, WinLossSequence}]
+    Top = lists:sort(sort_fun(), Accounts_list1), % ordena a lista por nivel e sequencia de vitorias/derrotas
+    Top10 = lists:sublist(Top, 10), % fica com os 10 primeiros
+    Top10.
+    
+
+convert_to_list_of_tuples([], List) -> List;
+convert_to_list_of_tuples([H | T], List) ->
+    {Username, {_, Level, WinLossSequence}} = H,
+    List1 = [{Username, list_to_integer(Level), list_to_integer(WinLossSequence)} | List],
+    convert_to_list_of_tuples(T, List1).
+
+ % Funçao de comparação para ordenar a lista
+ % lists:sort usa os resultados da funçao de comparação para ordenar a lista
+ % Retorna true se o primeiro elemento for maior que o segundo, false caso contrário
+sort_fun() ->
+    fun(User1, User2) ->
+        {_, Level1, WinLossSequence1} = User1,
+        {_, Level2, WinLossSequence2} = User2,
+        if 
+            Level1 > Level2 -> 
+                true;
+            true ->
+                if
+                    WinLossSequence1 > WinLossSequence2 ->
+                        true;
+                    true ->
+                        false
+                end
+        end
+    end.
+        
