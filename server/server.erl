@@ -83,7 +83,15 @@ comunicator(Socket) ->
                                     gen_tcp:send(Socket, "Join lobby successful\n")
                             end
                     end,
-                    comunicator(Socket) %continua a receber mensagens
+                    comunicator(Socket); %continua a receber mensagens;
+                ["get_top10"] ->
+                    accountsProcess ! {get_top10, self()},
+                    receive
+                        Top10 ->
+                            Top10Data = extract_top10(Top10),
+                            gen_tcp:send(Socket, Top10Data),
+                            comunicator(Socket)
+                    end     
             end;
         {matchStarted, Match_pid} ->
             io:fwrite("Match started~n"),
@@ -246,3 +254,21 @@ extract_time(CurrentTime) ->
     Time = integer_to_list(CurrentTime),
     Time1 = lists:flatten(["Time,", Time, "\n"]),
     Time1.
+
+
+extract_top10(Top10) ->
+    Number_of_players = length(Top10), % Mandar o número de jogadores pois pode não haver suficientes para 10 
+    Number_of_players1 = integer_to_list(Number_of_players),
+    Data = lists:flatten(["Top10,", Number_of_players1]),
+    Data1 = extract_top10_data(Top10, Data),
+    Data2 = lists:flatten([Data1, "\n"]),
+    Data2.
+
+extract_top10_data([], Data) -> Data;
+extract_top10_data([H | T], Data) ->
+    {Username, Level, WinLossSequence} = H,
+    Level1 = integer_to_list(Level),
+    WinLossSequence1 = integer_to_list(WinLossSequence),
+    User = lists:flatten([",", Username, ",", Level1, ",", WinLossSequence1]),
+    Data1 = lists:flatten([Data, User]),
+    extract_top10_data(T, Data1).

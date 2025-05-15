@@ -27,7 +27,7 @@ accounts_manager(Accounts) ->
         {game_lost, Username} ->
             New_accounts = game_lost(Accounts, Username),
             accounts_manager(New_accounts);
-        {top10, From} ->
+        {get_top10, From} ->
             Top10 = get_top10(Accounts),
             From ! Top10,
             accounts_manager(Accounts)
@@ -122,9 +122,12 @@ convert_to_list_of_tuples([H | T], List) ->
     List1 = [{Username, list_to_integer(Level), list_to_integer(WinLossSequence)} | List],
     convert_to_list_of_tuples(T, List1).
 
- % Funçao de comparação para ordenar a lista
- % lists:sort usa os resultados da funçao de comparação para ordenar a lista
- % Retorna true se o primeiro elemento for maior que o segundo, false caso contrário
+% Funçao de comparação para ordenar a lista
+% lists:sort usa os resultados da funçao de comparação para ordenar a lista
+% normalmente a funçao de comparação devolve true se o primeiro elemento for menor que o segundo
+% pois a sort devolve a lista ordenada do menor para o maior
+% neste caso devolve true se o primeiro elemento for maior que o segundo
+% fazendo já assim uma especie de inverse na lista e ficando do maior para o menor
 sort_fun() ->
     fun(User1, User2) ->
         {_, Level1, WinLossSequence1} = User1,
@@ -132,6 +135,8 @@ sort_fun() ->
         if 
             Level1 > Level2 -> 
                 true;
+            Level1 < Level2 ->
+                false;
             true ->
                 if
                     WinLossSequence1 > WinLossSequence2 ->

@@ -77,4 +77,8 @@ public class ConnectionManager {
     this.out.flush();
   }
   
+  public void getTop10() {
+    this.out.println("get_top10");
+    this.out.flush();
+  }
 }

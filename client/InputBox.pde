@@ -49,9 +49,9 @@ public class InputBox {
         if (ascii_value == 8) { // Backspace key
             deleteCharacter();
         } else if ((this.text.length() < 16) && // Limit username to 16 characters
-                  (ascii_value >= 48 && ascii_value <= 57) || // Numeric characters
+                  ((ascii_value >= 48 && ascii_value <= 57) || // Numeric characters
                   (ascii_value >= 65 && ascii_value <= 90) || // Uppercase letters
-                  (ascii_value >= 97 && ascii_value <= 122)) { // Lowercase letters
+                  (ascii_value >= 97 && ascii_value <= 122))) { // Lowercase letters
             this.text += key;
         }
     }
@@ -69,8 +69,7 @@ public class InputBox {
     public void draw() {
         image(this.image, this.x, this.y);
         fill(0);
-        textSize(14);
-        textAlign(LEFT, CENTER);
-        text(this.text, this.x + 10, this.y + this.height/2 + 7); // Adjusted to center the text vertically
+        textSize(15);
+        text(this.text, this.x + 10, this.y + this.height/2 + 10); // Adjusted to center the text vertically
     }
 }
