@@ -7,7 +7,8 @@ private enum State{
     LOGGED,
     LOBBY,
     PLAYING,
-    MATCH_OVER
+    MATCH_OVER,
+    TOP_10
 }
 
 private State currentState;
@@ -31,6 +32,10 @@ private Button continueButton;
 private Button backButton;
 private Button playButton;
 private Button playAgainButton;
+private Button top10Button;
+
+private PImage menuBackground;
+private PImage matchBackground;
 
 private InputBox usernameBox;
 private InputBox passwordBox;
@@ -40,12 +45,16 @@ private SoundFile battleTheme;
 private char previousKey = ' ';
 private String MatchResult;
 private String CurrentTime;
+private String top10;
 
 void setup() {
-    size(1000, 600);
+    size(1000, 600); 
     background(1);
     currentState = State.MENU;
 
+    menuBackground = loadImage("Images/menu.png");
+    matchBackground = loadImage("Images/battle.jpg");
+    menuBackground.resize(width, height);
     battleTheme = new SoundFile(this, "Sound/ducktales_moon_theme.wav");
     
     try {
@@ -68,10 +77,13 @@ void setup() {
     continueButton.updatePosition(width/2 - continueButton.width/2, height/2 + continueButton.height*1.5);
     
     playButton = new Button("Images/play_default.png", "Images/play_hover.png", 0, 0);
-    playButton.updatePosition(width/2 - playButton.width/2, height/2 + playButton.height/2);    
+    playButton.updatePosition(width/2 - playButton.width/2, height/2 - playButton.height*2);    
 
     playAgainButton = new Button("Images/play_again_default.png", "Images/play_again_hover.png", 0, 0);
     playAgainButton.updatePosition(width/2 - playAgainButton.width/2, height/2 + playAgainButton.height*2);
+
+    top10Button = new Button("Images/top10_default.png", "Images/top10_hover.png", 0, 0);
+    top10Button.updatePosition(width/2 - top10Button.width/2, height/2 + top10Button.height/2);
 
     // Initialize input boxes
     usernameBox = new InputBox("Images/username_box.png", 0, 0);
@@ -80,6 +92,7 @@ void setup() {
     passwordBox = new InputBox("Images/password_box.png", 0, 0);
     passwordBox.updatePosition(width/2 - passwordBox.width/2, height/2);
 
+    // Initialize shots
     for (int i = 0; i < 7; i++) {
     playerShots[i] = new Shot(); // Tiros do jogador são azuis
     opponentShots[i] = new Shot(); // Tiros do adversário são vermelhos
@@ -90,25 +103,30 @@ void draw() {
     background(1);
     switch (currentState) {
         case MENU:
+            image(menuBackground, 0, 0);
             loginButton.draw();
             registerButton.draw();
             backButton.draw();
             break;
         case REGISTER:
+            image(menuBackground, 0, 0);
             backButton.draw();
             usernameBox.draw();
             passwordBox.draw();
             continueButton.draw();
             break;
         case LOGIN:
+            image(menuBackground, 0, 0);
             backButton.draw();
             usernameBox.draw();
             passwordBox.draw();
             continueButton.draw();            
             break;
         case LOGGED:
+            image(menuBackground, 0, 0);
             playButton.draw();
             backButton.draw();
+            top10Button.draw();
             break;
         case LOBBY:
             // TO DO: Lobby screen
@@ -121,6 +139,7 @@ void draw() {
             }
             break;
         case PLAYING:        
+            image(matchBackground, 0, 0);
             player.renderPlayer();
             opponent.renderPlayer();
 
@@ -142,13 +161,36 @@ void draw() {
             }
             break;
         case MATCH_OVER:
-            //escrever o resultado do jogo
+            image(matchBackground, 0, 0);
             matchThreadStarted = false;
             textSize(50);
             fill(255);
             text(MatchResult, width/2 - textWidth(MatchResult)/2, height/2 - 50);
             playAgainButton.draw();
             backButton.draw();
+            break;
+        case TOP_10:
+            image(menuBackground, 0, 0);
+            backButton.draw();
+            textSize(25);
+            fill(255);
+            text("Top 10 Players", width/2 - textWidth("Top 10 Players")/2, 150);
+            text("Username       |Level|Sequence", 350, 170);
+            text("|___________________________|", 340, 170);
+            int y = 190;
+            String[] parts = top10.split(","); // Top10,numplayer,username1,nivel1,sequencia1,username2...
+            int numPlayers = Integer.parseInt(parts[1]);
+            for (int i = 2; i < 2 + numPlayers * 3; i += 3) {
+                String name = parts[i];
+                int level = Integer.parseInt(parts[i + 1]);
+                int sequence = Integer.parseInt(parts[i + 2]);
+                text(name, 350, y);
+                text("|" + level, 500, y);
+                text("|" + sequence, 550, y);
+                text("|___________________________|", 340, y);
+                y += 20;
+            }
+            
             break;
     }
 }
@@ -194,6 +236,11 @@ void mouseMoved() {
         } else {
             backButton.changeToDefault();
         }
+        if (top10Button.isMouseOver()) {
+            top10Button.changeToHover();
+        } else {
+            top10Button.changeToDefault();
+        }
     }
     if(currentState == State.MATCH_OVER) {
         if (playAgainButton.isMouseOver()) {
@@ -201,6 +248,13 @@ void mouseMoved() {
         } else {
             playAgainButton.changeToDefault();
         }
+        if (backButton.isMouseOver()) {
+            backButton.changeToHover();
+        } else {
+            backButton.changeToDefault();
+        }
+    }
+    if(currentState == State.TOP_10) {
         if (backButton.isMouseOver()) {
             backButton.changeToHover();
         } else {
@@ -291,6 +345,11 @@ void mousePressed() {
         } else if (backButton.isMouseOver() && mouseButton == LEFT) {
             currentState = State.MENU;
             
+        } else if (top10Button.isMouseOver() && mouseButton == LEFT) {
+            this.cm.getTop10();
+            currentState = State.TOP_10;
+            top10Button.changeToDefault();
+            top10 = this.cm.receiveMessage();
         }
     }
     else if(currentState == State.PLAYING) {
@@ -311,8 +370,13 @@ void mousePressed() {
             }
 
         } else if (backButton.isMouseOver() && mouseButton == LEFT) {
+            currentState = State.LOGGED;   
+        }
+    }
+
+    else if(currentState == State.TOP_10) {
+        if (backButton.isMouseOver() && mouseButton == LEFT) {
             currentState = State.LOGGED;
-            
         }
     }
     
