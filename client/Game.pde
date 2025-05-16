@@ -18,11 +18,13 @@ private ConnectionManager cm;
 private Player player = new Player(0, 0, 255); // Jogador é azul
 private Player opponent = new Player(255, 0, 0); // adversário é vermelho
 
-private Shot[] playerShots = new Shot[7]; // Array de tiros do jogador
-private Shot[] opponentShots = new Shot[7]; // Array de tiros do adversário
+private Shot[] playerShots = new Shot[20]; // Array de tiros do jogador
+private Shot[] opponentShots = new Shot[20]; // Array de tiros do adversário
 
-private int previousShotTime = 0; // Tempo do último tiro disparado em milissegundos
-private int shotCooldown = 250; // tempo de recarga do tiro em milissegundos
+private Item[] blueItems = new Item[2]; // Array de itens azuis
+private Item[] redItems = new Item[2]; // Array de itens vermelhos
+private Item[] greenItems = new Item[2]; // Array de itens verdes
+private Item[] orangeItems = new Item[2]; // Array de itens laranjas
 
 private boolean matchThreadStarted = false;
 
@@ -53,8 +55,9 @@ void setup() {
     currentState = State.MENU;
 
     menuBackground = loadImage("Images/menu.png");
-    matchBackground = loadImage("Images/battle.jpg");
+    matchBackground = loadImage("Images/battle1.jpg");
     menuBackground.resize(width, height);
+    matchBackground.resize(width, height);
     battleTheme = new SoundFile(this, "Sound/ducktales_moon_theme.wav");
     
     try {
@@ -93,9 +96,15 @@ void setup() {
     passwordBox.updatePosition(width/2 - passwordBox.width/2, height/2);
 
     // Initialize shots
-    for (int i = 0; i < 7; i++) {
-    playerShots[i] = new Shot(); // Tiros do jogador são azuis
-    opponentShots[i] = new Shot(); // Tiros do adversário são vermelhos
+    for (int i = 0; i < playerShots.length; i++) {
+    playerShots[i] = new Shot(); 
+    opponentShots[i] = new Shot();
+    }
+    for (int i = 0; i < blueItems.length; i++) {
+        blueItems[i] = new Item(0,0,255);
+        redItems[i] = new Item(255,0,0);
+        greenItems[i] = new Item(0,255,0); 
+        orangeItems[i] = new Item(255,165,0); 
     }
 }
 
@@ -138,8 +147,15 @@ void draw() {
                 battleTheme.play();
             }
             break;
-        case PLAYING:        
+        case PLAYING:       
             image(matchBackground, 0, 0);
+            
+            if (matchThreadStarted == false){
+                matchThreadStarted = true;
+                println("Starting parser thread...");
+                thread("parser");
+            }
+
             player.renderPlayer();
             opponent.renderPlayer();
 
@@ -154,11 +170,13 @@ void draw() {
                 opponentShots[i].renderShot();
             }
     
-            if (matchThreadStarted == false){
-                matchThreadStarted = true;
-                println("Starting parser thread...");
-                thread("parser");
+            for (int i = 0; i < blueItems.length; i++) {
+                blueItems[i].spawn();
+                redItems[i].spawn();
+                greenItems[i].spawn();
+                orangeItems[i].spawn();
             }
+            
             break;
         case MATCH_OVER:
             image(matchBackground, 0, 0);
@@ -353,9 +371,8 @@ void mousePressed() {
         }
     }
     else if(currentState == State.PLAYING) {
-        if (mouseButton == LEFT && shotCooldown < millis() - previousShotTime) {
+        if (mouseButton == LEFT) {
             this.cm.sendShot(mouseX, mouseY);
-            previousShotTime = millis();
         }
     }
 
@@ -384,9 +401,9 @@ void mousePressed() {
 
 void parser(){
     // This function is called in a separate thread to parse messages from the server
+    println("Parser thread started...");
     boolean game_going = true;
     while (game_going) {
-        println("Parser thread started...");
         String message = this.cm.receiveMessage();
         println("Message: " + message);
         String[] parts = message.split(",");
@@ -435,11 +452,59 @@ void parser(){
             }
         } else if(parts[0].equals("Time")){ // "Time,tempo_atual"
             CurrentTime = parts[1];
-        } else if(parts[0].equals("GameOver")){ // "GameOver,resultado"
-            MatchResult = parts[1];
-            game_going = false;
-            currentState = State.MATCH_OVER;
+        } else if(parts[0].equals("Blue")){ // "Blue,x1,y1,x2,y2"
+            int numItems = Integer.parseInt(parts[1]);
+            int c = 0;
+            for (int i = 2; i < 2 + numItems * 2; i += 2, c += 1) {
+                float x = Float.parseFloat(parts[i]);
+                float y = Float.parseFloat(parts[i + 1]);
+                blueItems[c].setPosition(x, y);
+                blueItems[c].activateItem();
+            }
+            while (c < blueItems.length) { // Deactivate remaining items
+                blueItems[c].deactivateItem();
+                c++;
+            }
 
+        } else if(parts[0].equals("Red")){ // "Red,x1,y1,x2,y2"
+            int numItems = Integer.parseInt(parts[1]);
+            int c = 0;
+            for (int i = 2; i < 2 + numItems * 2; i += 2, c += 1) {
+                float x = Float.parseFloat(parts[i]);
+                float y = Float.parseFloat(parts[i + 1]);
+                redItems[c].setPosition(x, y);
+                redItems[c].activateItem();
+            }
+            while (c < redItems.length) { // Deactivate remaining items
+                redItems[c].deactivateItem();
+                c++;
+            }
+        } else if(parts[0].equals("Green")){ // "Green,x1,y1,x2,y2"
+            int numItems = Integer.parseInt(parts[1]);
+            int c = 0;
+            for (int i = 2; i < 2 + numItems * 2; i += 2, c += 1) {
+                float x = Float.parseFloat(parts[i]);
+                float y = Float.parseFloat(parts[i + 1]);
+                greenItems[c].setPosition(x, y);
+                greenItems[c].activateItem();
+            }
+            while (c < greenItems.length) { // Deactivate remaining items
+                greenItems[c].deactivateItem();
+                c++;
+            }
+        } else if(parts[0].equals("Orange")){ // "Orange,x1,y1,x2,y2"
+            int numItems = Integer.parseInt(parts[1]);
+            int c = 0;
+            for (int i = 2; i < 2 + numItems * 2; i += 2, c += 1) {
+                float x = Float.parseFloat(parts[i]);
+                float y = Float.parseFloat(parts[i + 1]);
+                orangeItems[c].setPosition(x, y);
+                orangeItems[c].activateItem();
+            }
+            while (c < orangeItems.length) { // Deactivate remaining items
+                orangeItems[c].deactivateItem();
+                c++;
+            }
         } else if(message.equals("GameWon")){
             MatchResult = "You won!";
             game_going = false;

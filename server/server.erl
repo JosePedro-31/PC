@@ -169,6 +169,7 @@ match_comunicator(Socket, Match_pid) ->
             Player_data = extract_player_data(Match_data),
             {ShotsPlayer, ShotsOponent} = extract_shots(Match_data),
             Time = extract_time(CurrentTime),
+            [Blue, Red, Green, Orange] = extract_items(Match_data),
             io:fwrite("Game update: ~p~n", [Player_data]),
             io:fwrite("Shots player: ~p~n", [ShotsPlayer]),
             io:fwrite("Shots oponent: ~p~n", [ShotsOponent]),
@@ -176,6 +177,10 @@ match_comunicator(Socket, Match_pid) ->
             gen_tcp:send(Socket, ShotsPlayer),
             gen_tcp:send(Socket, ShotsOponent),
             gen_tcp:send(Socket, Time),
+            gen_tcp:send(Socket, Blue),
+            gen_tcp:send(Socket, Red),
+            gen_tcp:send(Socket, Green),
+            gen_tcp:send(Socket, Orange),
             match_comunicator(Socket, Match_pid);
 
         {game_won, Username} ->
@@ -272,3 +277,35 @@ extract_top10_data([H | T], Data) ->
     User = lists:flatten([",", Username, ",", Level1, ",", WinLossSequence1]),
     Data1 = lists:flatten([Data, User]),
     extract_top10_data(T, Data1).
+
+
+extract_items(Match_data) ->
+    Items = maps:get(items, Match_data),
+    Blue = maps:get(blue, Items),
+    Red = maps:get(red, Items),
+    Green = maps:get(green, Items),
+    Orange = maps:get(orange, Items),
+    Num_blue = list_length(Blue, 0),
+    Num_red = list_length(Red, 0),
+    Num_green = list_length(Green, 0),
+    Num_orange = list_length(Orange, 0),
+    Blue1 = extract_items_data(Blue, lists:flatten(["Blue,", Num_blue])),
+    Red1 = extract_items_data(Red, lists:flatten(["Red,", Num_red])),
+    Green1 = extract_items_data(Green, lists:flatten(["Green,", Num_green])),
+    Orange1 = extract_items_data(Orange, lists:flatten(["Orange,", Num_orange])),
+    Data = [Blue1, Red1, Green1, Orange1],
+    Data.
+
+extract_items_data([], Data) -> lists:flatten(Data, "\n");
+extract_items_data([H | T], Data) ->
+    [X, Y] = H,
+    X1 = integer_to_list(X),
+    Y1 = integer_to_list(Y),
+    Data1 = lists:flatten([Data, ",", X1, ",", Y1]),
+    extract_items_data(T, Data1).
+
+
+list_length([], Num) -> integer_to_list(Num);
+list_length([_ | T], Num) -> list_length(T, Num + 1).
+
+    
