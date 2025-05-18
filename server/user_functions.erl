@@ -12,6 +12,9 @@ accounts_manager(Accounts) ->
         {register, Username, Password, From} ->
             New_accounts = register(Accounts, Username, Password, From),
             accounts_manager(New_accounts);
+        {delete_user, Username, Password, From} ->
+            New_accounts = delete_user(Accounts, Username, Password, From),
+            accounts_manager(New_accounts);
         {getLevel, Username, From} ->
             case maps:find(Username, Accounts) of
                 {ok, {_, Level, _}} ->
@@ -55,7 +58,25 @@ register(Accounts, Username, Password, From) ->
             % Adiciona o novo utilizador ao mapa com nivel 1 e sequencia de vitorias/derrotas 0
             New_accounts = maps:put(Username, {Password, "1", "0"}, Accounts), 
             From ! registration_successful,
-            file_functions:write_content("teste", New_accounts) % Adiciona o novo utilizador ao ficheiro
+            file_functions:write_content("contas", New_accounts) % Adiciona o novo utilizador ao ficheiro
+    end,
+    New_accounts.
+
+delete_user(Accounts, Username, Password, From) ->
+    case maps:find(Username, Accounts) of
+        {ok, {PasswordStored, _, _}} ->
+            if
+                Password == PasswordStored ->
+                    New_accounts = maps:remove(Username, Accounts),
+                    file_functions:write_content("contas", New_accounts), % Remove o utilizador do ficheiro
+                    From ! success;
+                true ->
+                    New_accounts = Accounts,
+                    From ! invalid_password
+            end;
+        _ ->
+            New_accounts = Accounts,
+            From ! invalid_user
     end,
     New_accounts.
 
@@ -80,7 +101,7 @@ game_won(Accounts, Username) ->
     % Atualiza o mapa com os novos valores
     New_accounts = maps:put(Username, {Password, integer_to_list(Level2), integer_to_list(WinLossSequence3)}, Accounts),
     % Guarda no ficheiro os novos valores
-    file_functions:write_content("teste", New_accounts),
+    file_functions:write_content("contas", New_accounts),
     New_accounts.
 
 
@@ -105,7 +126,7 @@ game_lost(Accounts, Username) ->
     % Atualiza o mapa com os novos valores
     New_accounts = maps:put(Username, {Password, integer_to_list(Level2), integer_to_list(WinLossSequence3)}, Accounts),
     % Guarda no ficheiro os novos valores
-    file_functions:write_content("teste", New_accounts),
+    file_functions:write_content("contas", New_accounts),
     New_accounts.
     
 get_top10(Accounts) ->

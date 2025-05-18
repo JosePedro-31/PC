@@ -4,24 +4,17 @@
 -import(user_functions, [accounts_manager/1]).
 -import(game, [init/2]).
 
--export ([s/0, server/1, stop/1]).
+-export ([start/1]).
 
 
-% mudar para como estava
-s() -> register(servidor, spawn(fun() -> server(1111) end)).
-
-stop(Server) -> Server ! stop.
-
-server(Port) ->
+start(Port) ->
     Result = gen_tcp:listen(Port, [binary, {packet, line}]),
     case Result of
         {ok, LSock} ->
             register(lobbyProcess, spawn(fun() -> lobby([]) end)),
-            Filename = "teste",
+            Filename = "contas",
             Accounts = file_functions:read_content(Filename),
             register(accountsProcess ,spawn(fun() -> accounts_manager(Accounts) end)),
-
-            %register(file_process, spawn(fun() -> file_management() end)),
             acceptor(LSock);
         {error, Reason} ->
             io:fwrite("Error generating socket\n"),
@@ -72,6 +65,20 @@ comunicator(Socket) ->
                             gen_tcp:send(Socket, "User already exists\n")
                     end,
                     comunicator(Socket); %continua a receber mensagens~
+                ["delete_user", Username, Password] ->
+                    accountsProcess ! {delete_user, Username, Password, self()},
+                    receive
+                        success ->
+                            io:fwrite("User deleted successfully~n"),
+                            gen_tcp:send(Socket, "User deleted successfully\n");
+                        invalid_user ->
+                            io:fwrite("Invalid user~n"),
+                            gen_tcp:send(Socket, "Invalid user\n");
+                        invalid_password ->
+                            io:fwrite("Invalid password~n"),
+                            gen_tcp:send(Socket, "Invalid password\n")
+                    end,
+                    comunicator(Socket); %continua a receber mensagens
                 ["join_lobby", Username] -> 
                     accountsProcess ! {getLevel, Username, self()},
                     receive
@@ -89,9 +96,13 @@ comunicator(Socket) ->
                     receive
                         Top10 ->
                             Top10Data = extract_top10(Top10),
-                            gen_tcp:send(Socket, Top10Data),
-                            comunicator(Socket)
-                    end     
+                            gen_tcp:send(Socket, Top10Data)
+                    end,
+                    comunicator(Socket);
+                _ ->
+                    io:fwrite("Unknown message received~n"),
+                    gen_tcp:send(Socket, "Unknown message\n"),
+                    comunicator(Socket)
             end;
         {matchStarted, Match_pid} ->
             io:fwrite("Match started~n"),
@@ -104,7 +115,6 @@ comunicator(Socket) ->
 
 
 lobby(Pids) ->
-    io:fwrite("Lobby: ~p~n", [Pids]), %debug
     receive
         {join, Username, User_level, From} ->
             case Pids of

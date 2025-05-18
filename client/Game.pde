@@ -4,6 +4,7 @@ private enum State{
     MENU,
     REGISTER,
     LOGIN,
+    DELETE_ACCOUNT,
     LOGGED,
     LOBBY,
     PLAYING,
@@ -15,8 +16,8 @@ private State currentState;
 
 private ConnectionManager cm;
 
-private Player player = new Player(0, 0, 255); // Jogador é azul
-private Player opponent = new Player(255, 0, 0); // adversário é vermelho
+private Player player = new Player(255, 255, 255); // Jogador é Branco
+private Player opponent = new Player(255, 0, 255); // adversário é Fuschia
 
 private Shot[] playerShots = new Shot[20]; // Array de tiros do jogador
 private Shot[] opponentShots = new Shot[20]; // Array de tiros do adversário
@@ -35,6 +36,7 @@ private Button backButton;
 private Button playButton;
 private Button playAgainButton;
 private Button top10Button;
+private Button deleteButton;
 
 private PImage menuBackground;
 private PImage matchBackground;
@@ -73,6 +75,9 @@ void setup() {
     loginButton = new Button("Images/login_default.png", "Images/login_hover.png", 0, 0);
     loginButton.updatePosition(width/2 - loginButton.width/2, height/2 + loginButton.height/2);
     
+    deleteButton = new Button("Images/delete_default.png", "Images/delete_hover.png", 0, 0);
+    deleteButton.updatePosition(width/2 - deleteButton.width/2, height/2 + deleteButton.height*1.5);
+    
     backButton = new Button("Images/back_default.png", "Images/back_hover.png", 0, 0);
     backButton.updatePosition(0, backButton.height/2);
 
@@ -87,6 +92,7 @@ void setup() {
 
     top10Button = new Button("Images/top10_default.png", "Images/top10_hover.png", 0, 0);
     top10Button.updatePosition(width/2 - top10Button.width/2, height/2 + top10Button.height/2);
+
 
     // Initialize input boxes
     usernameBox = new InputBox("Images/username_box.png", 0, 0);
@@ -115,6 +121,7 @@ void draw() {
             image(menuBackground, 0, 0);
             loginButton.draw();
             registerButton.draw();
+            deleteButton.draw();
             backButton.draw();
             break;
         case REGISTER:
@@ -131,6 +138,13 @@ void draw() {
             passwordBox.draw();
             continueButton.draw();            
             break;
+        case DELETE_ACCOUNT:
+            image(menuBackground, 0, 0);
+            backButton.draw();
+            usernameBox.draw();
+            passwordBox.draw();
+            continueButton.draw();
+            break;
         case LOGGED:
             image(menuBackground, 0, 0);
             playButton.draw();
@@ -138,9 +152,10 @@ void draw() {
             top10Button.draw();
             break;
         case LOBBY:
-            // TO DO: Lobby screen
+            image(menuBackground, 0, 0);
             fill(255);
-            text("Lobby screen", 300, 300);
+            textSize(20);
+            text("Waiting...", 480, 300);
             String response = this.cm.receiveMessage();
             if(response.equals("Match started")){
                 currentState = State.PLAYING;
@@ -225,13 +240,18 @@ void mouseMoved() {
         } else {
             registerButton.changeToDefault();
         }
+        if (deleteButton.isMouseOver()) {
+            deleteButton.changeToHover();
+        } else {
+            deleteButton.changeToDefault();
+        }
         if (backButton.isMouseOver()) {
             backButton.changeToHover();
         } else {
             backButton.changeToDefault();
         }
     }
-    if(currentState == State.REGISTER || currentState == State.LOGIN) {
+    if(currentState == State.REGISTER || currentState == State.LOGIN || currentState == State.DELETE_ACCOUNT) {
         if (continueButton.isMouseOver()) {
             continueButton.changeToHover();
         } else {
@@ -291,11 +311,15 @@ void mousePressed() {
             currentState = State.REGISTER;
             registerButton.changeToDefault();
 
+        } else if (deleteButton.isMouseOver() && mouseButton == LEFT) {
+            currentState = State.DELETE_ACCOUNT;
+            deleteButton.changeToDefault();
+
         } else if (backButton.isMouseOver() && mouseButton == LEFT) {
             exit(); // Close the application
         }
     }
-    else if(currentState == State.REGISTER || currentState == State.LOGIN) {
+    else if(currentState == State.REGISTER || currentState == State.LOGIN || currentState == State.DELETE_ACCOUNT) {
         if (backButton.isMouseOver() && mouseButton == LEFT) {
             currentState = State.MENU;
             usernameBox.clearText();
@@ -312,8 +336,6 @@ void mousePressed() {
             usernameBox.deselect();
 
         } else if(currentState == State.LOGIN && continueButton.isMouseOver() && mouseButton == LEFT) {
-            //TO DO: Verificar se o user e a pass estão corretos
-            println("Username: " + usernameBox.getText() + ", Password: " + passwordBox.getText());
             
             cm.loginUser(usernameBox.getText(), passwordBox.getText());
             String response = this.cm.receiveMessage();
@@ -331,9 +353,7 @@ void mousePressed() {
             passwordBox.deselect();
 
         } else if(currentState == State.REGISTER && continueButton.isMouseOver() && mouseButton == LEFT) {
-            //TO DO: Verificar se o username ainda não existe, se não guardar o nome e a pass
-            println("Username: " + usernameBox.getText() + ", Password: " + passwordBox.getText());
-            
+
             cm.registerUser(usernameBox.getText(), passwordBox.getText());
             String response = this.cm.receiveMessage();
             println("Response: " + response);
@@ -341,6 +361,21 @@ void mousePressed() {
             if (response.equals("Registration successful")){
                 player.setName(usernameBox.getText());
                 currentState = State.LOGGED;
+                continueButton.changeToDefault();
+            }
+            
+            usernameBox.clearText();
+            passwordBox.clearText();
+            usernameBox.deselect();
+            passwordBox.deselect();
+        } else if(currentState == State.DELETE_ACCOUNT && continueButton.isMouseOver() && mouseButton == LEFT) {
+            
+            cm.deleteUser(usernameBox.getText(), passwordBox.getText());
+            String response = this.cm.receiveMessage();
+            println("Response: " + response);
+
+            if (response.equals("User deleted successfully")){
+                currentState = State.MENU;
                 continueButton.changeToDefault();
             }
             
@@ -523,7 +558,7 @@ void parser(){
 
 
 void keyPressed() {
-    if (currentState == State.REGISTER || currentState == State.LOGIN) {
+    if (currentState == State.REGISTER || currentState == State.LOGIN || currentState == State.DELETE_ACCOUNT) {
         if (usernameBox.isSelected()) {
             usernameBox.receiveKey(key);
             usernameBox.draw(); // Redraw the input box to show the username

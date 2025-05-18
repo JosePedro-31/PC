@@ -120,7 +120,7 @@ create_shot(Match_data, X, Y, PlayerPid) ->
                      PlayerNumberShots = maps:get(numberShots, Player),
                      NewPlayerNumberShots = PlayerNumberShots + 1,
                      Player1 = maps:put(numberShots, NewPlayerNumberShots, Player),
-                     Player2 = maps:put(previousShotTime, os:timestamp(), Player1),
+                     Player2 = maps:put(previousShotTime, CurrentTime, Player1),
                      PlayerX = maps:get(x, Player1),
                      PlayerY = maps:get(y, Player1),
                      X1 = X - PlayerX, % fazer "translate" ao ponto do tiro para a sua posição relativa à origem
@@ -145,45 +145,37 @@ game_logic(Match_data) ->
        [{Pid1, P1}, {Pid2, P2}] = maps:to_list(Players),
 
        % Atualizar a posição dos jogadores
-       {X1, Y1, SpeedX1, SpeedY1} = movement(P1),
-       {X2, Y2, SpeedX2, SpeedY2} = movement(P2),
-       P1_2 = maps:put(x, X1, P1),
-       P1_3 = maps:put(y, Y1, P1_2),
-       P1_4 = maps:put(speedX, SpeedX1, P1_3),
-       P1_5 = maps:put(speedY, SpeedY1, P1_4),
-       P2_2 = maps:put(x, X2, P2),
-       P2_3 = maps:put(y, Y2, P2_2),
-       P2_4 = maps:put(speedX, SpeedX2, P2_3),
-       P2_5 = maps:put(speedY, SpeedY2, P2_4),
+       P1_2 = movement(P1),
+       P2_2 = movement(P2),
 
        % atualizar a posição dos tiros
        Shots = maps:get(shots, Match_data),
        Player1_Shots = maps:get(Pid1, Shots),
        Player2_Shots = maps:get(Pid2, Shots),
-       Player1_Shots2 = movement_shots(Player1_Shots, [], P1_5),
-       Player2_Shots2 = movement_shots(Player2_Shots, [], P2_5),
+       Player1_Shots2 = movement_shots(Player1_Shots, [], P1_2),
+       Player2_Shots2 = movement_shots(Player2_Shots, [], P2_2),
 
        % Spawn de items
        Items = maps:get(items, Match_data),
        Items1 = spawn_items(Items),
 
        % Verificar Colisoes
-       {P1_6, P2_6, Player2_Shots3} = colision_player_shot(P1_5, P2_5, Player2_Shots2, Player2_Shots2),
-       {P2_7, P1_7, Player1_Shots3} = colision_player_shot(P2_6, P1_6, Player1_Shots2, Player1_Shots2),
+       {P1_3, P2_3, Player2_Shots3} = colision_player_shot(P1_2, P2_2, Player2_Shots2, Player2_Shots2),
+       {P2_4, P1_4, Player1_Shots3} = colision_player_shot(P2_3, P1_3, Player1_Shots2, Player1_Shots2),
 
-       {P1_8, Player1_Shots4} = collision_shot_wall(P1_7 ,Player1_Shots3, []),
-       {P2_8, Player2_Shots4} = collision_shot_wall(P2_7, Player2_Shots3, []),
+       {P1_5, Player1_Shots4} = collision_shot_wall(P1_4 ,Player1_Shots3, []),
+       {P2_5, Player2_Shots4} = collision_shot_wall(P2_4, Player2_Shots3, []),
 
-       {P1_9, P2_9} = collision_player_wall(P1_8, P2_8),
+       {P1_6, P2_6} = collision_player_wall(P1_5, P2_5),
        
-       {P1_10, Items2} = collision_player_item(P1_9, Items1),
-       {P2_10, Items3} = collision_player_item(P2_9, Items2),
+       {P1_7, Items2} = collision_player_item(P1_6, Items1),
+       {P2_7, Items3} = collision_player_item(P2_6, Items2),
 
-       P1_11 = item_effect_updater(P1_10),
-       P2_11 = item_effect_updater(P2_10),
+       P1_8 = item_effect_updater(P1_7),
+       P2_8 = item_effect_updater(P2_7),
 
-       Players1 = maps:put(Pid1, P1_11, Players),
-       Players2 = maps:put(Pid2, P2_11, Players1),
+       Players1 = maps:put(Pid1, P1_8, Players),
+       Players2 = maps:put(Pid2, P2_8, Players1),
        Shots1 = maps:put(Pid1, Player1_Shots4, Shots),
        Shots2 = maps:put(Pid2, Player2_Shots4, Shots1),
        Match_data1 = maps:put(players, Players2, Match_data),
@@ -194,7 +186,7 @@ game_logic(Match_data) ->
        CurrentTime = calculate_time(StartTime),
 
        if 
-              CurrentTime >= 60 ->
+              CurrentTime >= 120 ->
                      end_game(Match_data3);
               true ->
                      Pid1 ! {game_update, Match_data3, CurrentTime}, % Envia mensagem para o jogador 1 com os dados atualizados
@@ -234,12 +226,12 @@ movement(P) ->
                             SpeedX1 = SpeedX
                      end;
               {_, _} ->
-                     case SpeedX of
-                            ValueX when ValueX > 0 -> 
+                     if
+                            SpeedX > 0 -> 
                                    SpeedX1 = SpeedX - 1;
-                            ValueX when ValueX < 0 ->
+                            SpeedX < 0 ->
                                    SpeedX1 = SpeedX + 1;
-                            _ ->
+                            true ->
                                    SpeedX1 = 0
                      end
        end,
@@ -263,19 +255,22 @@ movement(P) ->
                                    SpeedY1 = SpeedY
                      end;
               {_, _} ->
-                     case SpeedY of
-                            ValueY when ValueY > 0 -> 
+                     if
+                            SpeedY > 0 -> 
                                    SpeedY1 = SpeedY - 1;
-                            ValueY when ValueY < 0 ->
+                            SpeedY < 0 ->
                                    SpeedY1 = SpeedY + 1;
-                            _ ->
+                            true ->
                                    SpeedY1 = 0
                      end
        end,
        X1 = X + SpeedX1,
        Y1 = Y + SpeedY1,
-       Result = {X1, Y1, SpeedX1, SpeedY1},
-       Result.
+       Player = maps:put(x, X1, P),
+       Player1 = maps:put(y, Y1, Player),
+       Player2 = maps:put(speedX, SpeedX1, Player1),
+       Player3 = maps:put(speedY, SpeedY1, Player2),
+       Player3.
 
 
 movement_shots([], PlayerShots, _) -> PlayerShots;
@@ -294,10 +289,10 @@ spawn_items(Items) ->
        Red = maps:get(red, Items),
        Green = maps:get(green, Items),
        Orange = maps:get(orange, Items),
-       Spawn_blue = rand:uniform(100),
-       Spawn_red = rand:uniform(100),
-       Spawn_green = rand:uniform(100),
-       Spawn_orange = rand:uniform(100),
+       Spawn_blue = rand:uniform(500),
+       Spawn_red = rand:uniform(500),
+       Spawn_green = rand:uniform(500),
+       Spawn_orange = rand:uniform(500),
        if
               (Spawn_blue =< 1) and (length(Blue) < 2) ->
                      % Adiciona um item azul

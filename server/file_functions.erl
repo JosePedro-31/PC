@@ -3,7 +3,7 @@
 -export ([write_content/2, read_content/1]).
 
 
-write_content(Filename, Content) ->
+write_content(Filename, Content) -> % #{Username => {Password, Nivel, WinLossSequence}}
     Content1 = maps:to_list(Content), % Converte o mapa numa lista de tuplos [{Key, Value}]
     Data = "", % Cria uma lista vazia para armazenar os dados formatados
     Data1 = map_formater(Content1, Data), % cria uma lista com as linhas a escrever no ficheiro
@@ -17,7 +17,7 @@ write_content(Filename, Content) ->
 map_formater([], Data) -> Data;
 map_formater([H|T], Data) ->   
     {Username, PasswordNivelSequencia} = H, % H é um tuplo {Username, {Password, Nivel, WinLossSequence}}
-    {Password, Nivel, WinLossSequence} = PasswordNivelSequencia, % PasswordNivel é um tuplo {Password, Nivel, WinLossSequence}
+    {Password, Nivel, WinLossSequence} = PasswordNivelSequencia, % PasswordNivelSequence é um tuplo {Password, Nivel, WinLossSequence}
     case T of
         [] -> % Se H for o último elemento da lista, não adiciona o \n para não criar uma linha vazia no fim
             Content = [Username, ",", Password, ",", Nivel, ",", WinLossSequence];
@@ -25,7 +25,6 @@ map_formater([H|T], Data) ->
             Content = [Username, ",", Password, ",", Nivel, ",", WinLossSequence, "\n"]
     end,
     Content1 = lists:flatten(Content), % junta todos os elementos da lista em uma só
-    io:fwrite("Content: ~p~n", [Content1]), %debug
     map_formater(T, [Data | Content1]).
 
 
@@ -45,7 +44,7 @@ read_content(Filename) ->
             end;
         {error, Reason} ->
             io:fwrite("Error reading file: ~p~n", [Reason]),
-            #{}
+            #{} 
     end.
 
 

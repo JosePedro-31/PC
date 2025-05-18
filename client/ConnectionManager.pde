@@ -53,6 +53,11 @@ public class ConnectionManager {
     return true;
   }
 
+  public void deleteUser(String username, String password) {
+    this.out.println("delete_user," + username + "," + password);
+    this.out.flush();
+  }
+
   public void joinLobby(String username) {
     this.out.println("join_lobby," + username);
     this.out.flush();
