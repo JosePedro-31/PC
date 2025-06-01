@@ -148,7 +148,7 @@ convert_to_list_of_tuples([H | T], List) ->
 % normalmente a funçao de comparação devolve true se o primeiro elemento for menor que o segundo
 % pois a sort devolve a lista ordenada do menor para o maior
 % neste caso devolve true se o primeiro elemento for maior que o segundo
-% fazendo já assim uma especie de inverse na lista e ficando do maior para o menor
+% fazendo já assim uma especie de reverse na lista e ficando do maior para o menor
 sort_fun() ->
     fun(User1, User2) ->
         {_, Level1, WinLossSequence1} = User1,

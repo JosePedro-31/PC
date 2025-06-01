@@ -477,10 +477,10 @@ item_effect_updater(Player) ->
                      Player1 = Player
        end,
        if
-              ShotSpeed > 30 ->
+              ShotSpeed > 20 ->
                      NewShotSpeed = ShotSpeed - 0.1,
                      Player2 = maps:put(shotSpeed, NewShotSpeed, Player1);
-              ShotSpeed < 30 ->
+              ShotSpeed < 20 ->
                      NewShotSpeed = ShotSpeed + 0.1,
                      Player2 = maps:put(shotSpeed, NewShotSpeed, Player1);
               true ->

@@ -58,8 +58,12 @@ void setup() {
 
     menuBackground = loadImage("Images/menu.png");
     matchBackground = loadImage("Images/battle1.jpg");
+    
     menuBackground.resize(width, height);
     matchBackground.resize(width, height);
+    
+    image(menuBackground, 0, 0);
+
     battleTheme = new SoundFile(this, "Sound/ducktales_moon_theme.wav");
     
     try {
@@ -115,7 +119,6 @@ void setup() {
 }
 
 void draw() {
-    background(1);
     switch (currentState) {
         case MENU:
             image(menuBackground, 0, 0);
@@ -211,7 +214,7 @@ void draw() {
             text("Username       |Level|Sequence", 350, 170);
             text("|___________________________|", 340, 170);
             int y = 190;
-            String[] parts = top10.split(","); // Top10,numplayer,username1,nivel1,sequencia1,username2...
+            String[] parts = top10.split(","); // Top10,numplayers,username1,nivel1,sequencia1,username2...
             int numPlayers = Integer.parseInt(parts[1]);
             for (int i = 2; i < 2 + numPlayers * 3; i += 3) {
                 String name = parts[i];
